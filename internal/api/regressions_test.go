@@ -158,6 +158,18 @@ func TestUnknownStoreIsRefused(t *testing.T) {
 	}
 }
 
+// A stock card with a green badge but no number is available, not "unknown".
+func TestStockCardWithoutNumber(t *testing.T) {
+	page := `<section class="m-store-search-result"><article class="m-store-search-card">
+<span class="m-store-info-header--title" role="heading" aria-level="3">Obramat X</span>
+<div class="stock-status_text"><span class="stock-status_badge stock-status_badge--green"></span> Disponible</div>
+<button data-store-id="9"></button></article></section>` // synthetic: no captured page shows this wording yet
+	rows, err := parseStockCards([]byte(page))
+	if err != nil || len(rows) != 1 || !rows[0].Stock.Available || rows[0].Stock.Quantity != nil {
+		t.Fatalf("%+v %v", rows, err)
+	}
+}
+
 func isKind(err error, k Kind) bool {
 	e, ok := err.(*Error)
 	return ok && e.Kind == k

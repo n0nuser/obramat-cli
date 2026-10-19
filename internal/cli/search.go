@@ -99,6 +99,18 @@ func (a *App) listParams(ctx context.Context, cmd *cobra.Command, keywords []str
 	return p, nil
 }
 
+// inStock keeps products the store has. Filtering each page before
+// counting lets --limit fill up from later pages.
+func inStock(ps []api.Product) []api.Product {
+	kept := ps[:0]
+	for _, p := range ps {
+		if p.Stock != nil && p.Stock.Available {
+			kept = append(kept, p)
+		}
+	}
+	return kept
+}
+
 type listingView struct{ *api.Listing }
 
 func (v listingView) Pretty(w io.Writer, color bool) {
@@ -171,6 +183,9 @@ Examples:
 				if err != nil {
 					return err
 				}
+				if f.inStock {
+					l.Products = inStock(l.Products)
+				}
 				if out == nil {
 					out = l
 				} else {
@@ -181,15 +196,6 @@ Examples:
 					break
 				}
 				p.Page++
-			}
-			if f.inStock {
-				kept := out.Products[:0]
-				for _, pr := range out.Products {
-					if pr.Stock != nil && pr.Stock.Available {
-						kept = append(kept, pr)
-					}
-				}
-				out.Products = kept
 			}
 			if limit > 0 && len(out.Products) > limit {
 				out.Products = out.Products[:limit]

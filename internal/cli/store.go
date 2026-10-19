@@ -261,6 +261,19 @@ sweeps every store, about one request per three stores.`,
 				if err != nil {
 					return err
 				}
+				answered := map[int]bool{}
+				for _, r := range rows {
+					answered[r.Store.ID] = true
+				}
+				var missing []string
+				for _, s := range stores {
+					if !answered[s.ID] {
+						missing = append(missing, s.Name)
+					}
+				}
+				if len(missing) > 0 {
+					a.notice("no stock answer for %d stores: %s", len(missing), strings.Join(missing, ", "))
+				}
 				return a.Printer.Print(storeStockView{Product: ref, Stores: rows})
 			case hasPoint:
 				if !cmd.Flags().Changed("lat") || !cmd.Flags().Changed("lng") {

@@ -270,6 +270,7 @@ var (
 	reStockCardText = regexp.MustCompile(`(?s)<div class="stock-status_text">(.*?)</div>`)
 	reStockCardQty  = regexp.MustCompile(`(?i)([\d.]+)\s+en stock`)
 	reStockCardID   = regexp.MustCompile(`data-store-id="(\d+)"`)
+	reStockBadge    = regexp.MustCompile(`stock-status_badge--(\w+)`)
 )
 
 // StockNear returns a product's stock at the six stores nearest a point.
@@ -307,6 +308,9 @@ func parseStockCards(body []byte) ([]StoreStock, error) {
 		} else if strings.Contains(strings.ToLower(label), "no dispon") {
 			zero := 0
 			ss.Stock.Quantity = &zero
+		} else {
+			// No number: trust the badge colour the site draws next to it.
+			ss.Stock.Available = first(reStockBadge, card) == "green"
 		}
 		if id == 0 || ss.Store.Name == "" {
 			return nil, changed("GET /store-header-module/services/contextlayer/store-search-result", "store card without id or name", []byte(card))
