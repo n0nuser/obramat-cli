@@ -165,6 +165,41 @@ func TestInStockFilterParam(t *testing.T) {
 	}
 }
 
+// TestInStockListing pins the page the site answers for that request:
+// captured live 2026-10-19 with a real browser session, store 22 (Obramat
+// Salamanca), the availability toggle comes back applied and every card is one
+// the store has.
+func TestInStockListing(t *testing.T) {
+	page := fixture(t, "search_tablero-osb_store22_in-stock.html.gz")
+	ssr, err := parseSSR(page, "GET /search")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var applied bool
+	for _, f := range ssr.filters() {
+		if f.Code == inStockFacet && f.Applied {
+			applied = true
+		}
+	}
+	if !applied || ssr.Products.Number != 4 || ssr.Pagination.NumberOfPages != 1 {
+		t.Fatalf("applied=%v number=%d pages=%d", applied, ssr.Products.Number, ssr.Pagination.NumberOfPages)
+	}
+	cards, lazy := parseCards(page, StoreRef{ID: 22, Name: "Obramat Salamanca"})
+	if len(lazy) != 0 || len(cards) != 4 {
+		t.Fatalf("%d cards, %d lazy", len(cards), len(lazy))
+	}
+	for ref, c := range cards {
+		if c.Stock == nil || !c.Stock.Available {
+			t.Fatalf("card %s is not in stock: %+v", ref, c.Stock)
+		}
+	}
+	p := cards["25064668"]
+	if p.Price == nil || p.Price.Amount != 30.5 || p.Stock.Quantity == nil || *p.Stock.Quantity != 64 {
+		t.Fatalf("card: %+v", p)
+	}
+	roundTrip(t, p)
+}
+
 func TestPastLastPageIsNotFound(t *testing.T) {
 	_, err := parseSSR(fixture(t, "search_cemento_p11_dependency-error.html.gz"), "GET /search")
 	if e, ok := err.(*Error); !ok || e.Kind != KindNotFound {
