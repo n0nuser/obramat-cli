@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/pelletier/go-toml/v2"
 	"github.com/spf13/cobra"
@@ -119,6 +120,12 @@ func typedValue(path []string, s string) (any, error) {
 			return nil, output.Usagef("store is a store code, a number (see `obramat store list`)")
 		}
 		return int64(n), nil
+	case len(path) == 2 && path[0] == "watch" && path[1] == "interval":
+		d, err := time.ParseDuration(s)
+		if err != nil || d < minInterval {
+			return nil, output.Usagef("watch.interval is a duration of at least %s, for example 1h", minInterval)
+		}
+		return s, nil
 	case len(path) == 3 && path[0] == "sinks" && path[2] == "command":
 		var v struct {
 			V []string `toml:"v"`

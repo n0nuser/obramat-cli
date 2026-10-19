@@ -90,3 +90,20 @@ func TestStoreFlagNoneClearsTheDefault(t *testing.T) {
 		t.Fatalf("env beats config: %+v", s)
 	}
 }
+
+// Regression: `config set watch.interval abc` was saved and only failed at
+// the next watch command.
+func TestConfigSetChecksValues(t *testing.T) {
+	isolate(t, "http://127.0.0.1:1")
+	for _, args := range [][]string{{"watch.interval", "abc"}, {"watch.interval", "1m"}, {"store", "leganes"}, {"sinks.x.command", "notanarray"}, {"colour", "red"}} {
+		if _, _, code := run(append([]string{"config", "set"}, args...)...); code != 2 {
+			t.Errorf("config set %v: exit %d", args, code)
+		}
+	}
+	if _, _, code := run("config", "set", "watch.interval", "2h"); code != 0 {
+		t.Fatalf("valid interval refused: %d", code)
+	}
+	if out, _, _ := run("config", "get", "watch.interval"); strings.TrimSpace(out) != `"2h"` {
+		t.Fatalf("get: %q", out)
+	}
+}
