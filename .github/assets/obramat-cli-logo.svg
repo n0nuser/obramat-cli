@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 200" width="720" height="200" role="img" aria-label="obramat cli">
+  <title>obramat cli</title>
+  <!-- A pallet of three stacked boards: the CLI's subject is what is in stock where. -->
+  <g transform="translate(40 40)" fill="none" stroke="#111" stroke-width="8" stroke-linejoin="round">
+    <rect x="0" y="0" width="120" height="26" rx="3"/>
+    <rect x="0" y="34" width="120" height="26" rx="3"/>
+    <rect x="0" y="68" width="120" height="26" rx="3"/>
+    <path d="M0 110 H120 M14 102 V120 M60 102 V120 M106 102 V120"/>
+  </g>
+  <text x="200" y="118" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="76" font-weight="700" fill="#111">obramat</text>
+  <text x="560" y="118" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="76" font-weight="400" fill="#888">cli</text>
+  <text x="203" y="160" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="22" fill="#888">$ prices and stock per store</text>
+</svg>
