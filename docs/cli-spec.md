@@ -200,7 +200,8 @@ are involved.
 
 `OBRAMAT_COOKIEJAR=FILE` uses an export on every run instead of the stored session and is never written
 to disk; `auth login` refuses to shadow it. Rotated cookies (DataDome rotates on most responses) are
-written back for file sessions only. A command that needs the storefront with no session exits 3.
+written back for file sessions only. `auth status --check` with no session exits 3; the other commands
+run without one and let the site answer.
 
 ### mcp
 
@@ -250,7 +251,7 @@ has its own flag.
 | 0 | success, including "nothing changed" |
 | 1 | generic failure |
 | 2 | usage: bad flags or arguments, missing store for `--in-stock`, landing-page category |
-| 3 | auth: a command that needs the storefront was run with no browser session (`obramat auth login`) |
+| 3 | auth: `auth status --check` was run with no browser session (`obramat auth login`) |
 | 4 | not found: product, page past the last, store, watch |
 | 5 | blocked: the site's bot protection refused (HTTP 403 from DataDome) or HTTP 429 |
 | 6 | network, timeout, or the site down (5xx, maintenance page) |

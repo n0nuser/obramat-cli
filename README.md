@@ -179,7 +179,7 @@ the mcp server exposes the read commands as tools (`search`, `product_show`, `st
 
 ## exit codes
 
-`0` ok, `1` generic, `2` usage, `3` no browser session for a command that needs the site, `4` not found, `5` blocked by the site's bot protection or rate limited (the cli then stays away from the site for 10 minutes), `6` network or site down, `7` the site changed shape (stderr carries a prefilled issue link), `130` interrupted.
+`0` ok, `1` generic, `2` usage, `3` `auth status --check` with no browser session, `4` not found, `5` blocked by the site's bot protection or rate limited (the cli then stays away from the site for 10 minutes), `6` network or site down, `7` the site changed shape (stderr carries a prefilled issue link), `130` interrupted.
 
 ## building from source
 

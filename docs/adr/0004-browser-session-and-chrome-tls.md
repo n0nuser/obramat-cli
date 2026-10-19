@@ -56,8 +56,8 @@ Option 3, and the hello that makes it consistent.
 
 - **No account, still read-only.** This is not a login: no password is ever asked for and none of the
   account, cart or order commands arrive. [ADR 0002](0002-read-only.md) stands, except that exit code 3
-  is now produced: a command that needs the storefront with no session exits 3 and says how to import
-  one.
+  is now produced: `auth status --check` with no session exits 3 and says how to import one. The other
+  commands run without a session and let the site answer.
 - **Re-importing.** When DataDome stops trusting the session, every site command exits 5 until the user
   reloads the site in the same browser and imports the session again. `auth status --check` and
   `auth login` (which checks by default) tell a working session from a challenged one.

@@ -67,9 +67,8 @@ Events: `product.new`, `product.price_changed`, `product.stock_changed` (product
 
 ## Exit codes
 
-0 ok (also "no changes"), 1 generic, 2 usage, 3 no browser session for a command that needs
-the site (`obramat auth login`), 4 not found, 5 blocked by the site's bot protection or rate
-limited (wait minutes, do not loop), 6 network or site down, 7 the site changed shape (stderr
-carries a prefilled issue link), 130 interrupted.
+0 ok (also "no changes"), 1 generic, 2 usage, 3 `auth status --check` with no browser session, 4 not
+found, 5 blocked by the site's bot protection or rate limited (wait minutes, do not loop), 6 network or
+site down, 7 the site changed shape (stderr carries a prefilled issue link), 130 interrupted.
 
 Keep the request rate low: one command is one to a few requests; `--all` and `--pages` add more.
