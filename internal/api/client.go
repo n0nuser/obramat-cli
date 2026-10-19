@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -209,6 +210,25 @@ func (c *Client) debugf(format string, args ...any) {
 	if c.Debug != nil {
 		fmt.Fprintf(c.Debug, "obramat: "+format+"\n", args...)
 	}
+}
+
+var reAppliedStore = regexp.MustCompile(`data-store-id="0*(\d+)"`)
+
+// checkStoreApplied makes sure a full page was rendered for the requested
+// store. Pages rendered for a store carry its code ("004") in the store
+// header; for a code the site does not know they render with no store, and
+// their default web prices must not be reported as that store's
+// (regression test TestUnknownStoreIsRefused).
+func checkStoreApplied(page []byte, store StoreRef) error {
+	if store.ID == 0 {
+		return nil
+	}
+	for _, m := range reAppliedStore.FindAllSubmatch(page, -1) {
+		if string(m[1]) == strconv.Itoa(store.ID) {
+			return nil
+		}
+	}
+	return usagef("obramat.es did not apply store %d: it is not a store code the site knows. See `obramat store list`", store.ID)
 }
 
 // abs turns a site path into a full URL on the public host, whatever base the

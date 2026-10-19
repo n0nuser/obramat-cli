@@ -136,6 +136,33 @@ func TestListFetchesLazyCards(t *testing.T) {
 	}
 }
 
+// Regression: --store 99 (no such store) was trusted, and the site's default
+// web prices were reported as store 99's. The site renders an unknown code
+// as no store at all; the page then lacks data-store-id for it.
+func TestUnknownStoreIsRefused(t *testing.T) {
+	c, _ := fakeSite(t, map[string]string{
+		"/search":                    "search_tablero-osb.html.gz",
+		"/productos/x-25064668.html": "product_25064668.html.gz",
+	})
+	ctx := context.Background()
+	if _, err := c.List(ctx, ListParams{Query: "osb", Store: StoreRef{ID: 99}}); !isKind(err, KindUsage) {
+		t.Fatalf("listing: %v", err)
+	}
+	if _, err := c.Product(ctx, "/productos/x-25064668.html", StoreRef{ID: 99}); !isKind(err, KindUsage) {
+		t.Fatalf("product: %v", err)
+	}
+	// A known store passes: its pages carry data-store-id="004".
+	c4, _ := fakeSite(t, map[string]string{"/search": "search_tablero-osb_store4.html.gz"})
+	if _, err := c4.List(ctx, ListParams{Query: "osb", Store: StoreRef{ID: 4}}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func isKind(err error, k Kind) bool {
+	e, ok := err.(*Error)
+	return ok && e.Kind == k
+}
+
 func TestExactReferenceRedirectsToProduct(t *testing.T) {
 	c, _ := fakeSite(t, map[string]string{
 		"/search": "redirect:/productos/tablero-osb3-250x125x1-5cm-25064668.html",

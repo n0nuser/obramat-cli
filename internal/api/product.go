@@ -77,6 +77,9 @@ func (c *Client) Product(ctx context.Context, arg string, store StoreRef) (*Prod
 	if resp.status == 404 {
 		return nil, notFoundf("no product at %s", path)
 	}
+	if err := checkStoreApplied(resp.body, store); err != nil {
+		return nil, err
+	}
 	return parseProduct(string(resp.body), resp.url.Path, store)
 }
 

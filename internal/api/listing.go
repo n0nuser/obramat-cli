@@ -176,6 +176,9 @@ func (c *Client) List(ctx context.Context, p ListParams) (*Listing, error) {
 		}
 		return nil, notFoundf("search page not found")
 	}
+	if err := checkStoreApplied(resp.body, p.Store); err != nil {
+		return nil, err
+	}
 	page := string(resp.body)
 	l := &Listing{Query: p.Query, Category: p.Category, Page: max(p.Page, 1), Sort: p.Sort}
 	if l.Sort == "" {
