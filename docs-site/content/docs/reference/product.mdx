@@ -1,0 +1,31 @@
+---
+title: product
+description: "Inspect one product"
+---
+
+{/* Written by cmd/docsgen from the command tree; edit the Go help strings instead. */}
+
+## `obramat product`
+
+Inspect one product
+
+### `obramat product show`
+
+A product's price, stock at the store, delivery options and characteristics
+
+```bash
+obramat product show PRODUCT [flags]
+```
+
+Show one product. PRODUCT is its reference (the "Ref." number, for example
+25064668) or its URL. Price and stock are for the store in context.
+
+```bash
+obramat product show 25064668 --store 4 --format pretty
+obramat product show https://www.obramat.es/productos/tablero-osb3-250x125x1-5cm-25064668.html
+```
+
+| Flag | Type | Default | Description |
+| --- | --- | --- | --- |
+| `--store` | string | - | store code, slug or name for prices and stock (default: OBRAMAT_STORE, then config `store`; `none` for the web price) |
+

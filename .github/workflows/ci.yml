@@ -1,0 +1,64 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  go:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: gofmt
+        run: test -z "$(gofmt -l .)"
+      - name: vet
+        run: go vet ./...
+      - name: staticcheck
+        run: go run honnef.co/go/tools/cmd/staticcheck@latest ./...
+      - name: test
+        # Fixture and fake-server tests only; nothing here talks to obramat.es.
+        run: go test ./... -count=1
+      - name: build
+        run: go build ./...
+      - name: cross-compile
+        run: |
+          for os in linux darwin windows; do
+            for arch in amd64 arm64; do
+              GOOS=$os GOARCH=$arch CGO_ENABLED=0 go build -o /dev/null ./cmd/obramat
+            done
+          done
+      # The command reference is generated from the cobra tree; a flag changed
+      # without `make docs` would publish wrong docs.
+      - name: command reference is current
+        run: make docs-check
+      - uses: goreleaser/goreleaser-action@v6
+        with:
+          version: "~> v2"
+          args: check
+
+  docs-site:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: docs-site/package-lock.json
+      - run: make docs
+      - run: npm ci
+        working-directory: docs-site
+      - run: npm run typecheck
+        working-directory: docs-site
+      - run: npm run build
+        working-directory: docs-site

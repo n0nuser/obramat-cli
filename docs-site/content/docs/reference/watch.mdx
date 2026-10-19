@@ -1,0 +1,169 @@
+---
+title: watch
+description: "Watch searches and products for price and stock changes"
+---
+
+{/* Written by cmd/docsgen from the command tree; edit the Go help strings instead. */}
+
+## `obramat watch`
+
+Watch searches and products for price and stock changes
+
+Watch searches and products and get an event when something changes:
+a new product in a search, a price change, a product going out of stock or
+coming back, a product page disappearing.
+
+Watches live on this machine. "check" runs the due ones once, prints their
+events and delivers them to the watch's sinks; "run" loops in the foreground;
+"service" installs a systemd timer or launchd agent that runs "check".
+A watch pins its store when it is created.
+
+```bash
+obramat watch add product 25064668 --store leganes --name osb-15
+obramat watch add search "tablero osb" --store 4 --max-price 30 --name osb --notify phone
+obramat watch check --format jsonl | jq -r 'select(.type=="product.back_in_stock") | .product.url'
+obramat watch events --since 24h --format pretty
+obramat watch service install --interval 1h
+```
+
+### `obramat watch add`
+
+Create a watch
+
+#### `obramat watch add product`
+
+Watch one product's price and stock at a store
+
+```bash
+obramat watch add product PRODUCT [flags]
+```
+
+| Flag | Type | Default | Description |
+| --- | --- | --- | --- |
+| `--emit-initial` | bool | `false` | report what exists now as product.new events instead of a silent baseline |
+| `--interval` | duration | `0s` | how often the watch is due (default: config watch.interval, else 30m; at least 5m) |
+| `--name` | string | - | watch name: letters, digits, - and _ (required) |
+| `--notify` | stringArray | - | sink from config to deliver events to, repeatable |
+| `--store` | string | - | store code, slug or name for prices and stock (default: OBRAMAT_STORE, then config `store`; `none` for the web price) |
+
+#### `obramat watch add search`
+
+Watch a search or category for new products, price and stock changes
+
+```bash
+obramat watch add search [keywords...] [flags]
+```
+
+| Flag | Type | Default | Description |
+| --- | --- | --- | --- |
+| `--brand` | stringArray | - | brand, repeatable (the site's Marca facet) |
+| `--category` | string | - | browse this category path instead of searching (see `obramat category list`) |
+| `--emit-initial` | bool | `false` | report what exists now as product.new events instead of a silent baseline |
+| `--filter` | stringArray | - | facet CODE=VALUE, repeatable (see `obramat search filters`) |
+| `--in-stock` | bool | `false` | only products with stock at the store (filtered by the cli: the site has no such filter) |
+| `--interval` | duration | `0s` | how often the watch is due (default: config watch.interval, else 30m; at least 5m) |
+| `--max-price` | float64 | `0` | maximum price in EUR |
+| `--min-price` | float64 | `0` | minimum price in EUR |
+| `--name` | string | - | watch name: letters, digits, - and _ (required) |
+| `--notify` | stringArray | - | sink from config to deliver events to, repeatable |
+| `--pages` | int | `1` | result pages to compare on each check |
+| `--sort` | string | `relevance` | order: relevance, price_asc, price_desc |
+| `--store` | string | - | store code, slug or name for prices and stock (default: OBRAMAT_STORE, then config `store`; `none` for the web price) |
+
+### `obramat watch check`
+
+Run due watches once and print their events
+
+```bash
+obramat watch check [NAME...] [flags]
+```
+
+Run watches once. Named watches run whatever their schedule; without names
+the due ones run, or every one with --all. Prints the events (an empty list
+when nothing changed, still exit 0) and delivers them to sinks.
+
+| Flag | Type | Default | Description |
+| --- | --- | --- | --- |
+| `--all` | bool | `false` | run every watch, due or not |
+
+### `obramat watch events`
+
+Show stored events, newest first
+
+```bash
+obramat watch events [NAME] [flags]
+```
+
+| Flag | Type | Default | Description |
+| --- | --- | --- | --- |
+| `--limit` | int | `100` | at most this many events |
+| `--since` | duration | `0s` | only events newer than this, for example 24h |
+
+### `obramat watch list`
+
+List watches
+
+```bash
+obramat watch list
+```
+
+### `obramat watch remove`
+
+Delete a watch and its event history
+
+```bash
+obramat watch remove NAME [flags]
+```
+
+| Flag | Type | Default | Description |
+| --- | --- | --- | --- |
+| `--yes` | bool | `false` | do not ask |
+
+### `obramat watch run`
+
+Check due watches in a loop until Ctrl-C
+
+```bash
+obramat watch run [flags]
+```
+
+Foreground loop: every tick runs the due watches and prints their events as
+they happen (--format jsonl streams one per line). The tick is the shortest
+watch interval unless --interval says otherwise, plus up to 10% jitter.
+
+| Flag | Type | Default | Description |
+| --- | --- | --- | --- |
+| `--interval` | duration | `0s` | tick length (default: the shortest watch interval) |
+
+### `obramat watch service`
+
+Run `watch check` on a timer (systemd, launchd, or a printed schtasks line)
+
+#### `obramat watch service install`
+
+Install and start the timer
+
+```bash
+obramat watch service install [flags]
+```
+
+| Flag | Type | Default | Description |
+| --- | --- | --- | --- |
+| `--interval` | duration | `0s` | timer period (default: config watch.interval, else 30m) |
+
+#### `obramat watch service status`
+
+Show whether the timer is installed and running
+
+```bash
+obramat watch service status
+```
+
+#### `obramat watch service uninstall`
+
+Stop and remove the timer and its log
+
+```bash
+obramat watch service uninstall
+```
+

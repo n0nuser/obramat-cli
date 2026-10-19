@@ -1,0 +1,72 @@
+---
+title: search
+description: "Search products, or browse a category, with the site's filters"
+---
+
+{/* Written by cmd/docsgen from the command tree; edit the Go help strings instead. */}
+
+## `obramat search`
+
+Search products, or browse a category, with the site's filters
+
+```bash
+obramat search [keywords...] [flags]
+```
+
+Search products, or browse a category with --category, using the filters the
+site offers: brand, price range, sort order and any facet from
+`obramat search filters`.
+
+Prices and stock are for the store in context. Without one the site shows a
+default web price, which for some products is a Canary Islands (IGIC) price,
+and no stock. A store also narrows results to what it sells.
+
+```bash
+obramat search "tablero osb" --format pretty
+obramat search cemento --brand WEBER --min-price 5 --max-price 20 --sort price_asc
+obramat search "tablero osb" --store leganes --in-stock --format pretty
+obramat search --category /madera/tableros/tableros-y-tablas-de-madera/ --filter attribute-00596=15
+obramat search cemento --pages 3 --format jsonl
+```
+
+| Flag | Type | Default | Description |
+| --- | --- | --- | --- |
+| `--brand` | stringArray | - | brand, repeatable (the site's Marca facet) |
+| `--category` | string | - | browse this category path instead of searching (see `obramat category list`) |
+| `--filter` | stringArray | - | facet CODE=VALUE, repeatable (see `obramat search filters`) |
+| `--in-stock` | bool | `false` | only products with stock at the store (filtered by the cli: the site has no such filter) |
+| `--limit` | int | `0` | stop after this many products (0: whole pages) |
+| `--max-price` | float64 | `0` | maximum price in EUR |
+| `--min-price` | float64 | `0` | minimum price in EUR |
+| `--page` | int | `1` | result page to start at (the site serves at most 10) |
+| `--pages` | int | `1` | how many pages to fetch |
+| `--sort` | string | `relevance` | order: relevance, price_asc, price_desc |
+| `--store` | string | - | store code, slug or name for prices and stock (default: OBRAMAT_STORE, then config `store`; `none` for the web price) |
+
+### `obramat search filters`
+
+List the filters the site offers for a search or category
+
+```bash
+obramat search filters [keywords...] [flags]
+```
+
+List the facets the site offers for a search or a category, with the values
+and how many products each has. Pass CODE=VALUE to --filter.
+
+```bash
+obramat search filters cemento --format pretty
+obramat search filters --category /madera/tableros/tableros-y-tablas-de-madera/
+```
+
+| Flag | Type | Default | Description |
+| --- | --- | --- | --- |
+| `--brand` | stringArray | - | brand, repeatable (the site's Marca facet) |
+| `--category` | string | - | browse this category path instead of searching (see `obramat category list`) |
+| `--filter` | stringArray | - | facet CODE=VALUE, repeatable (see `obramat search filters`) |
+| `--in-stock` | bool | `false` | only products with stock at the store (filtered by the cli: the site has no such filter) |
+| `--max-price` | float64 | `0` | maximum price in EUR |
+| `--min-price` | float64 | `0` | minimum price in EUR |
+| `--sort` | string | `relevance` | order: relevance, price_asc, price_desc |
+| `--store` | string | - | store code, slug or name for prices and stock (default: OBRAMAT_STORE, then config `store`; `none` for the web price) |
+

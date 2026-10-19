@@ -1,0 +1,38 @@
+---
+title: sink
+description: "Notification targets for watch events, from config.toml"
+---
+
+{/* Written by cmd/docsgen from the command tree; edit the Go help strings instead. */}
+
+## `obramat sink`
+
+Notification targets for watch events, from config.toml
+
+Sinks deliver watch events somewhere besides stdout: an ntfy topic, a JSON
+webhook (raw event, or a discord/slack text message), or a local program that
+gets the event JSON on stdin. Define them in config.toml.
+
+```bash
+obramat config set sinks.phone.type ntfy
+obramat config set sinks.phone.url https://ntfy.sh
+obramat config set sinks.phone.topic my-obramat-alerts
+obramat sink test phone
+```
+
+### `obramat sink list`
+
+List sinks and what is wrong with them
+
+```bash
+obramat sink list
+```
+
+### `obramat sink test`
+
+Send a made-up event to a sink
+
+```bash
+obramat sink test NAME
+```
+

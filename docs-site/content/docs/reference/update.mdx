@@ -1,0 +1,25 @@
+---
+title: update
+description: "Update obramat to the latest release"
+---
+
+{/* Written by cmd/docsgen from the command tree; edit the Go help strings instead. */}
+
+## `obramat update`
+
+Update obramat to the latest release
+
+```bash
+obramat update [flags]
+```
+
+Check GitHub for the latest release and replace this binary with it, after
+verifying the download against the release's checksums.txt. --check only
+reports. Development builds (go build, go install from a branch) are not
+replaced; reinstall those the way you installed them.
+
+| Flag | Type | Default | Description |
+| --- | --- | --- | --- |
+| `--check` | bool | `false` | only report whether an update exists |
+| `--yes` | bool | `false` | update without asking |
+

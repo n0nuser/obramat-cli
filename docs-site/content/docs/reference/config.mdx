@@ -1,0 +1,54 @@
+---
+title: config
+description: "Read and write config.toml"
+---
+
+{/* Written by cmd/docsgen from the command tree; edit the Go help strings instead. */}
+
+## `obramat config`
+
+Read and write config.toml
+
+Read and write config.toml. Keys are dotted paths.
+
+```bash
+obramat config path
+obramat config set store 4
+obramat config set watch.interval 1h
+obramat config set sinks.phone.type ntfy
+obramat config set sinks.script.command '["/home/me/bin/on-event", "--quiet"]'
+obramat config get sinks.phone
+```
+
+### `obramat config get`
+
+Print one key
+
+```bash
+obramat config get KEY
+```
+
+### `obramat config list`
+
+Print the whole config
+
+```bash
+obramat config list
+```
+
+### `obramat config path`
+
+Print where the CLI keeps its files
+
+```bash
+obramat config path
+```
+
+### `obramat config set`
+
+Set one key; exec commands take a TOML string array
+
+```bash
+obramat config set KEY VALUE
+```
+

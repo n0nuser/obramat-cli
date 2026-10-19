@@ -1,0 +1,33 @@
+---
+title: category
+description: "Browse the category tree"
+---
+
+{/* Written by cmd/docsgen from the command tree; edit the Go help strings instead. */}
+
+## `obramat category`
+
+Browse the category tree
+
+### `obramat category list`
+
+List category paths, for search --category
+
+```bash
+obramat category list [flags]
+```
+
+List the site's categories as paths. Browse one with
+`obramat search --category PATH`. Top-level paths are landing pages; the product
+lists start one or two levels down.
+
+```bash
+obramat category list --depth 1 --format pretty
+obramat category list --parent /madera/ --format pretty
+```
+
+| Flag | Type | Default | Description |
+| --- | --- | --- | --- |
+| `--depth` | int | `0` | only paths this many levels deep or less |
+| `--parent` | string | - | only the direct children of this path |
+

@@ -1,0 +1,81 @@
+---
+title: store
+description: "Obramat warehouses and the stock each one holds"
+---
+
+{/* Written by cmd/docsgen from the command tree; edit the Go help strings instead. */}
+
+## `obramat store`
+
+Obramat warehouses and the stock each one holds
+
+Obramat warehouses ("Almacenes") and the stock each one holds.
+
+A store is named by its code (the number the site uses, Usera is 12), its slug
+(obramat-usera) or a unique part of its name (usera).
+
+```bash
+obramat store list --format pretty
+obramat store near --lat 41.39 --lng 2.17 --format pretty
+obramat store show leganes
+obramat store stock 25064668 --store 4
+obramat store stock 25064668 --lat 40.42 --lng -3.70 --format pretty
+obramat store stock 25064668 --all --format pretty
+```
+
+### `obramat store list`
+
+List every store with its code
+
+```bash
+obramat store list [flags]
+```
+
+| Flag | Type | Default | Description |
+| --- | --- | --- | --- |
+| `--refresh` | bool | `false` | rebuild the cached list now |
+
+### `obramat store near`
+
+The six stores nearest a point, with opening state
+
+```bash
+obramat store near [flags]
+```
+
+| Flag | Type | Default | Description |
+| --- | --- | --- | --- |
+| `--lat` | float64 | `0` | latitude |
+| `--lng` | float64 | `0` | longitude |
+
+### `obramat store show`
+
+One store's details
+
+```bash
+obramat store show STORE
+```
+
+### `obramat store stock`
+
+A product's stock per store: one store, the stores near a point, or all
+
+```bash
+obramat store stock PRODUCT [flags]
+```
+
+A product's stock per store. PRODUCT is a reference (Ref. on the product page)
+or a product URL.
+
+With --store (or a default store) it reads that store's product page: exact
+stock and that store's price. With --lat/--lng it lists the six stores nearest
+the point, as the site's "availability by store" drawer does. With --all it
+sweeps every store, about one request per three stores.
+
+| Flag | Type | Default | Description |
+| --- | --- | --- | --- |
+| `--all` | bool | `false` | every store (about 15 requests) |
+| `--lat` | float64 | `0` | latitude: list the six stores nearest this point |
+| `--lng` | float64 | `0` | longitude |
+| `--store` | string | - | store code, slug or name for prices and stock (default: OBRAMAT_STORE, then config `store`; `none` for the web price) |
+

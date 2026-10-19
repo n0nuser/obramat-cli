@@ -1,0 +1,36 @@
+---
+title: mcp
+description: "Serve the read commands to an agent harness over MCP (stdio)"
+---
+
+{/* Written by cmd/docsgen from the command tree; edit the Go help strings instead. */}
+
+## `obramat mcp`
+
+Serve the read commands to an agent harness over MCP (stdio)
+
+```bash
+obramat mcp
+```
+
+Run a Model Context Protocol server on stdin and stdout. Each tool runs the
+command it is named after and returns the JSON that command prints; a failed
+command returns its error envelope with the exit code.
+
+Tools: search, product_show, store_stock, store_list, store_near, category_list, watch_check
+
+```bash
+obramat mcp install claude-code
+obramat mcp            # normally started by the harness
+```
+
+### `obramat mcp install`
+
+Register this binary as an MCP server in a harness config
+
+```bash
+obramat mcp install claude-code|codex|cursor
+```
+
+Write the server entry into ~/.claude.json (claude-code), ~/.codex/config.toml (codex) or ~/.cursor/mcp.json (cursor). Other entries are kept; a second run says "unchanged".
+
