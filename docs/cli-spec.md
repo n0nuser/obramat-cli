@@ -232,8 +232,15 @@ first 300 bytes of the response; never the user's arguments.
 Every request goes to `https://www.obramat.es` (override with `OBRAMAT_BASE_URL` for tests) with a
 browser User-Agent ending in `obramat-cli/<version>`, `Accept` and `Accept-Language: es-ES`. The site's
 bot protection refuses a non-browser User-Agent; see [ADR 0003](adr/0003-browser-user-agent.md).
-Requests from one process are spaced at least 400 ms apart. No cookies are kept between requests; the
-store cookie is built for each request that needs it.
+Requests from one process are spaced at least 400 ms apart, 1.5 s inside sweeps (`store list`,
+`store stock --all`). No cookies are kept between requests; the store cookie is built for each request
+that needs it.
+
+After a block (exit 5) the CLI writes `$XDG_CACHE_HOME/obramat-cli/blocked-until` and, for the next
+10 minutes, refuses every command that would contact the site with exit 5 and the time the pause ends,
+without sending anything. Local commands (`config`, `watch list`, `watch events`, `sink`, `skills`) keep
+working; `watch run` sits the pause out. Deleting the file overrides it. Observed 2026-10-19: two
+back-to-back `--all` sweeps at 400 ms got a 403 that was still in place 45 s later.
 
 ## 10. Files and environment
 

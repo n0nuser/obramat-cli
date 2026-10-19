@@ -66,6 +66,7 @@ func Execute(version string, args []string, stdin io.Reader, stdout, stderr io.W
 		fmt.Fprintln(stderr, "obramat: interrupted")
 		return 130
 	}
+	a.recordBlock(err)
 	path := "obramat"
 	if cmd != nil {
 		path = cmd.CommandPath()
@@ -151,7 +152,7 @@ func (a *App) setup(cmd *cobra.Command) error {
 	if a.flagDebug {
 		a.Client.Debug = a.Stderr
 	}
-	return nil
+	return a.checkPause(cmd)
 }
 
 // isCobraUsage recognises cobra's own argument errors, which arrive as

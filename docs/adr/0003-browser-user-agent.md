@@ -14,8 +14,9 @@ impersonation was needed, which keeps the binary free of uTLS-style dependencies
 
 Send a browser User-Agent with `obramat-cli/<version>` appended, `Accept` and `Accept-Language: es-ES`.
 No other evasion: no cookie reuse, no fingerprint spoofing, no header shuffling. Space requests at least
-400 ms apart within a process; floor watch intervals at 5 minutes. A 403 recognised as DataDome, or any
-429, is exit 5 with advice to wait, and `watch check` stops at the first one.
+400 ms apart within a process, 1.5 s inside sweeps; floor watch intervals at 5 minutes. A 403 recognised
+as DataDome, or any 429, is exit 5, `watch check` stops at the first one, and the CLI pauses all
+site traffic for 10 minutes (a local file), because retrying at once kept the block in place.
 
 ## Consequences
 

@@ -441,10 +441,14 @@ watch interval unless --interval says otherwise, plus up to 10% jitter.`,
 				if err != nil {
 					return err
 				}
-				events, _ := a.runChecks(ctx, db, ws)
+				if _, paused := a.pausedUntil(); paused {
+					ws = nil // sit the pause out, then carry on
+				}
+				events, err := a.runChecks(ctx, db, ws)
 				if ctx.Err() != nil {
 					return nil
 				}
+				a.recordBlock(err)
 				for _, ev := range events {
 					if err := a.Printer.Print(ev); err != nil {
 						return err

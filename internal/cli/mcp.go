@@ -79,6 +79,7 @@ func (a *App) runInProcess(ctx context.Context, argv []string) mcp.Result {
 	if err == nil {
 		return mcp.Result{Stdout: out.String()}
 	}
+	sub.recordBlock(err)
 	path := "obramat"
 	if cmd != nil {
 		path = cmd.CommandPath()

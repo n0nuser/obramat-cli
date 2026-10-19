@@ -16,6 +16,10 @@ description: What each status means and which are worth retrying.
 
 Code 3 is reserved and never used: the CLI has no account.
 
+After an exit 5 the CLI pauses for 10 minutes: commands that would contact the site fail at once with
+exit 5 and say when the pause ends, without sending a request. Local commands keep working. Retrying
+straight away only extends a block.
+
 ```bash
 obramat watch check
 case $? in

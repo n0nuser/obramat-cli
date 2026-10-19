@@ -37,6 +37,9 @@ type Client struct {
 	// Gap is the minimum time between two requests from this client. Sweeps
 	// (all stores, several pages) stay polite without each caller sleeping.
 	Gap time.Duration
+	// SweepGap replaces Gap inside multi-request sweeps (every store, stock
+	// everywhere). A dozen requests at Gap got this client blocked once.
+	SweepGap time.Duration
 
 	mu   sync.Mutex
 	last time.Time
@@ -49,10 +52,11 @@ func New(version string) *Client {
 		base = strings.TrimRight(v, "/")
 	}
 	return &Client{
-		HTTP: &http.Client{Timeout: 25 * time.Second},
-		Base: base,
-		UA:   browserUA + " obramat-cli/" + version,
-		Gap:  400 * time.Millisecond,
+		HTTP:     &http.Client{Timeout: 25 * time.Second},
+		Base:     base,
+		UA:       browserUA + " obramat-cli/" + version,
+		Gap:      400 * time.Millisecond,
+		SweepGap: 1500 * time.Millisecond,
 	}
 }
 
@@ -184,6 +188,21 @@ func (c *Client) wait(ctx context.Context) {
 		}
 	}
 	c.last = time.Now()
+}
+
+// sweep slows the client to SweepGap until the returned func is called.
+func (c *Client) sweep() (restore func()) {
+	c.mu.Lock()
+	old := c.Gap
+	if c.SweepGap > c.Gap {
+		c.Gap = c.SweepGap
+	}
+	c.mu.Unlock()
+	return func() {
+		c.mu.Lock()
+		c.Gap = old
+		c.mu.Unlock()
+	}
 }
 
 func (c *Client) debugf(format string, args ...any) {

@@ -213,6 +213,7 @@ var sweepSeeds = [][2]float64{
 // It costs one sitemap read, about fifteen nearby lookups and one page read
 // per store the lookups missed.
 func (c *Client) AllStores(ctx context.Context) ([]Store, error) {
+	defer c.sweep()()
 	slugs, err := c.StoreSlugs(ctx)
 	if err != nil {
 		return nil, err
@@ -319,6 +320,7 @@ func parseStockCards(body []byte) ([]StoreStock, error) {
 // store in stores has an answer. Each request answers for six stores, so a
 // full sweep is about a third as many requests as there are stores.
 func (c *Client) StockEverywhere(ctx context.Context, ref string, stores []Store) ([]StoreStock, error) {
+	defer c.sweep()()
 	got := map[int]StoreStock{}
 	for _, s := range stores {
 		if _, ok := got[s.ID]; ok || (s.Lat == 0 && s.Lng == 0) {
