@@ -1,0 +1,34 @@
+name: npm-publish
+
+# Publishes npm/ on a version tag with npm Trusted Publishing (OIDC): no token
+# is stored anywhere. Provenance is generated automatically.
+#
+# One-time setup on npmjs.com, after the package exists: Settings -> Trusted
+# Publishers -> add a GitHub Actions publisher with owner n0nuser, repository
+# obramat-cli, workflow npm-publish.yml and an empty environment. Until that
+# exists this workflow fails; it is separate from the binary release.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+      # Trusted Publishing needs npm >= 11.5; Node 22's bundled npm can be older.
+      - run: npm install -g npm@latest
+      - name: set the version from the tag
+        working-directory: npm
+        run: npm version "${GITHUB_REF_NAME#v}" --no-git-tag-version --allow-same-version
+      - name: publish
+        working-directory: npm
+        run: npm publish --access public
