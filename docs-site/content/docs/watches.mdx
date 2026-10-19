@@ -1,0 +1,52 @@
+---
+title: Watches
+description: Turn a search or a product into a stream of changes.
+---
+
+A watch is a saved search or product, pinned to the store it was created with. Each check compares what
+the site shows now with what it showed last time and emits events.
+
+```bash
+obramat watch add product 25064668 --store 4 --name osb-15
+obramat watch add search "tablero osb" --store 4 --max-price 30 --name osb --notify phone
+obramat watch list --format pretty
+obramat watch check
+obramat watch events --since 24h --format pretty
+```
+
+The first check runs when the watch is added and records a silent baseline; `--emit-initial` reports
+what exists as `product.new` instead.
+
+## Events
+
+| type | when | `change` |
+|---|---|---|
+| `product.new` | a search lists a product it had not listed | |
+| `product.price_changed` | the price moved | `{from, to}` |
+| `product.stock_changed` | product watches: the quantity moved | `{from, to}` |
+| `product.out_of_stock` | the store had it, now it does not | |
+| `product.back_in_stock` | the store did not have it, now it does | |
+| `product.removed` | product watches: the page is gone | |
+
+Search watches skip quantity changes; they happen with every sale.
+
+```json
+{"type":"product.back_in_stock","watch":"osb-15","at":"2026-10-19T08:30:00Z",
+ "product":{"ref":"25064668","title":"TABLERO OSB3 250X125X1,5CM","stock":{"quantity":40,"available":true}}}
+```
+
+## Sinks
+
+```toml
+[sinks.phone]
+type = "ntfy"
+url = "https://ntfy.sh"
+topic = "my-obramat-alerts"
+```
+
+```bash
+obramat sink test phone
+```
+
+`webhook` sinks post the event JSON (or, with `template = "discord"` or `"slack"`, a text message);
+`exec` sinks run a program with the event on stdin.

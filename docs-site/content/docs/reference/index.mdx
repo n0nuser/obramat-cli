@@ -1,0 +1,15 @@
+---
+title: Command reference
+description: Every command and flag, generated from the binary.
+---
+
+The other pages in this section are written by `cmd/docsgen` from the CLI's own command tree, so they
+list exactly the flags the binary has. CI regenerates them and fails when they are out of date.
+
+To change a page, change the command's help text or flag usage in Go and run:
+
+```bash
+make docs
+```
+
+See [Global flags](/docs/reference/global-flags) for the flags every command takes.

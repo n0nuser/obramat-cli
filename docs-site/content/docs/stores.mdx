@@ -1,0 +1,53 @@
+---
+title: Stores
+description: Every price and stock figure belongs to one warehouse.
+---
+
+Obramat prices differ between warehouses, and stock is only ever per warehouse. The site handles this
+with a store picker; the CLI with a store context.
+
+## Find your store
+
+```bash
+obramat store near --lat 40.42 --lng -3.70 --format pretty
+obramat store list --format pretty      # all of them, cached for a week
+obramat store show leganes
+```
+
+A store is named by its **code** (Leganés is `4`), its slug (`obramat-leganes`) or a unique part of the
+slug (`leganes`).
+
+## Set it
+
+In order of precedence:
+
+```bash
+obramat search cemento --store 4          # this command only
+export OBRAMAT_STORE=4                    # this shell
+obramat config set store 4                # always
+obramat search cemento --store none       # explicitly none
+```
+
+## Without a store
+
+The site then shows a default web price and no stock. Some products show a Canary Islands price (with
+IGIC instead of IVA); the CLI marks those with `"tax": "IGIC"`. With a store, listings also shrink to what
+that store sells.
+
+## Stock across stores
+
+```bash
+obramat store stock 25064668 --store 4                      # one store, exact, with its price
+obramat store stock 25064668 --lat 41.39 --lng 2.17         # the six nearest a point
+obramat store stock 25064668 --all --format pretty          # every store, about 15 requests
+```
+
+```json
+{
+  "product": "25064668",
+  "stores": [
+    { "store": { "id": 12, "name": "Obramat Usera" }, "slug": "obramat-usera", "distance_km": 10.7,
+      "stock": { "quantity": 94, "available": true, "label": "94 en Stock" } }
+  ]
+}
+```

@@ -1,0 +1,33 @@
+---
+title: obramat-cli
+description: Search obramat.es and check prices and stock per store from the terminal.
+---
+
+obramat.es shows a product's price and stock one store at a time, after you pick the store in a
+drawer. `obramat` is a single Go binary that asks the same pages for you: a search at your store, one
+product across every store, and a watch that tells you when the boards are back. It prints JSON.
+
+It is unofficial and read-only. There is no account, no cart and no order: buying stays in the browser.
+
+<Cards>
+  <Card title="Install" href="/docs/install">go install, or a release binary.</Card>
+  <Card title="Stores" href="/docs/stores">Why every price belongs to a store, and how to pick one.</Card>
+  <Card title="Search" href="/docs/search">Brand, price range, sort and every facet the site has.</Card>
+  <Card title="Watches" href="/docs/watches">Price and stock changes as a stream of events.</Card>
+  <Card title="Command reference" href="/docs/reference">Generated from the binary.</Card>
+</Cards>
+
+## What it looks like
+
+```bash
+obramat search "tablero osb" --store leganes --format pretty
+obramat product show 25064668 --store 4
+obramat store stock 25064668 --all --format pretty
+obramat watch add product 25064668 --store 4 --name osb --notify phone
+```
+
+<Callout type="warn" title="Unofficial">
+  obramat.es publishes no API. The CLI reads the public pages a browser reads, so a change on the site
+  can break it. When that happens it exits 7 with a prefilled issue link instead of printing wrong
+  numbers. See [When the site changes](/docs/api-changes).
+</Callout>

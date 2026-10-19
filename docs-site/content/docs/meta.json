@@ -1,0 +1,20 @@
+{
+  "title": "obramat-cli",
+  "pages": [
+    "index",
+    "---Getting started---",
+    "install",
+    "stores",
+    "---Using it---",
+    "search",
+    "output",
+    "examples",
+    "watches",
+    "scheduling",
+    "agents",
+    "---Reference---",
+    "reference",
+    "exit-codes",
+    "api-changes"
+  ]
+}

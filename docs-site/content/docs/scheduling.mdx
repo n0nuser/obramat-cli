@@ -1,0 +1,25 @@
+---
+title: Scheduling
+description: Run checks on a timer without a daemon.
+---
+
+```bash
+obramat watch service install --interval 1h
+obramat watch service status
+obramat watch service uninstall
+```
+
+On Linux this writes a systemd user service and timer, on macOS a launchd agent; both run
+`obramat watch check --format jsonl` and append to `~/.local/state/obramat-cli/obramat-watch.log`
+(rotated at 1 MiB). On Windows the command prints the `schtasks` line to run.
+
+A systemd user timer stops at logout unless lingering is on:
+
+```bash
+loginctl enable-linger
+```
+
+The default interval is 30 minutes and the floor is 5. A check that hits the site's bot protection
+(exit 5) stops at once; the next tick tries again.
+
+Without the service, `obramat watch run` loops in the foreground, or put `obramat watch check` in cron.

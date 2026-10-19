@@ -1,0 +1,18 @@
+---
+title: Agents
+description: MCP server and embedded notes.
+---
+
+```bash
+obramat mcp install claude-code     # or codex, cursor
+```
+
+The harness then starts `obramat mcp`, a stdio MCP server whose tools are the read commands:
+`search`, `product_show`, `store_stock`, `store_list`, `store_near`, `category_list`, `watch_check`.
+Each returns exactly the JSON the command prints; a failure returns the error envelope.
+
+For agents that call the binary directly:
+
+```bash
+obramat skills get obramat-usage
+```

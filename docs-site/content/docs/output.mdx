@@ -1,0 +1,47 @@
+---
+title: Output
+description: JSON by default, a table for reading, JSONL for streams, TOON for model context.
+---
+
+stdout carries data only; errors and notices go to stderr, so `obramat … | jq` never chokes on a message.
+
+<Tabs items={['json', 'pretty', 'jsonl', 'toon']}>
+  <Tab value="json">One JSON document. The default.</Tab>
+  <Tab value="pretty">An aligned table. Colour follows `NO_COLOR` and is off when stdout is not a terminal.</Tab>
+  <Tab value="jsonl">One object per line: a search's products, a check's events.</Tab>
+  <Tab value="toon">TOON, a compact form of the same JSON for language-model context.</Tab>
+</Tabs>
+
+## A product
+
+```json
+{
+  "ref": "25064668",
+  "title": "TABLERO OSB3 250X125X1,5CM",
+  "url": "https://www.obramat.es/productos/tablero-osb3-250x125x1-5cm-25064668.html",
+  "image": "https://media.adeo.com/media/4400130/media.jpg",
+  "price": {
+    "amount": 28, "amount_ex_vat": 23.14, "tax": "IVA", "unit": "cajas", "currency": "EUR",
+    "per_measure": { "amount": 8.96, "amount_ex_vat": 7.4, "unit": "m²" }
+  },
+  "store": { "id": 4, "name": "Obramat Leganés" },
+  "stock": { "quantity": 205, "available": true, "label": "205 en stock en Obramat Leganés" },
+  "badges": ["Mejor Precio por Cantidad"],
+  "delivery": ["Recogida 2 h en Almacén", "Envío a tu Obra en 24 horas"]
+}
+```
+
+`price` is null when the store does not sell the product. `stock` is present only with a store, and
+`quantity` is null when the site shows no number.
+
+## Errors
+
+```bash
+obramat --error-format json product show 99999999
+```
+
+```json
+{ "code": 4, "category": "not_found", "retryable": false, "message": "no product with reference 99999999" }
+```
+
+Branch on `category` or the exit code, not on `message`.

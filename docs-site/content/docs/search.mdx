@@ -1,0 +1,46 @@
+---
+title: Search and browse
+description: The site's filters, as flags.
+---
+
+```bash
+obramat search "tablero osb"
+obramat search --category /madera/tableros/tableros-y-tablas-de-madera/
+```
+
+Keywords search the catalogue; `--category` browses one category. Not both: the site's category pages
+ignore a query. `obramat category list --parent /madera/` lists paths.
+
+## Filters
+
+| flag | site filter |
+|---|---|
+| `--brand WEBER` | the "Marca" facet; repeat for several |
+| `--min-price 5 --max-price 20` | the price range |
+| `--filter CODE=VALUE` | any facet; repeat for several |
+| `--sort price_asc` | `relevance`, `price_asc`, `price_desc` |
+| `--in-stock` | products with stock at the store (done by the CLI: the site has no such filter) |
+
+Facet codes and values depend on the search:
+
+```bash
+obramat search filters cemento --format pretty
+```
+
+```
+CODE             FILTER                        VALUES (COUNT)
+price            Precio
+…
+attribute-06575  Marca                         MONTÓ (51), STN (39), PREFABRICADOS DUERO (33), PUJOL (27), …
+attribute-00124  Peso neto (en kg)             25 (95), 5 (24), 20 (23), 17 (16), …
+```
+
+## Pages
+
+The site serves 48 products per page and stops at page 10.
+
+```bash
+obramat search cemento --page 2
+obramat search cemento --pages 3 --format jsonl     # three pages, one product per line
+obramat search cemento --limit 10
+```

@@ -1,0 +1,18 @@
+---
+title: When the site changes
+description: Why the CLI stops instead of guessing.
+---
+
+The CLI reads pages built for browsers. When the site moves something, the safest outcome is a loud
+failure: a search that quietly returns no prices costs more than one that stops.
+
+When a page no longer has the shape the CLI expects, it exits `7` and prints a link to a prefilled
+GitHub issue with the CLI version, the command (without your arguments), the endpoint, the HTTP status
+and the start of the response.
+
+Not every failure is a change:
+
+- exit `5`: the site's bot protection refused the request. Wait a few minutes; do not loop.
+- exit `6`: the network, or the site down for maintenance.
+
+Run `obramat doctor` before filing; it runs a test search and says whether the site parses.

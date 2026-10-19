@@ -1,0 +1,20 @@
+@import 'tailwindcss';
+@import 'fumadocs-ui/css/neutral.css';
+@import 'fumadocs-ui/css/preset.css';
+
+@source '../node_modules/fumadocs-ui/dist/**/*.js';
+
+/* Plain black and white with one warm accent, like lumber and a safety stripe. */
+:root {
+  --color-fd-primary: #c2410c;
+  --color-fd-primary-foreground: #ffffff;
+  --color-fd-ring: #c2410c;
+}
+
+.dark {
+  --color-fd-background: #0b0b0b;
+  --color-fd-card: #141414;
+  --color-fd-primary: #fb923c;
+  --color-fd-primary-foreground: #0b0b0b;
+  --color-fd-ring: #fb923c;
+}

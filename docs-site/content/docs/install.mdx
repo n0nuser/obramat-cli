@@ -1,0 +1,53 @@
+---
+title: Install
+description: go install, or a release binary with a verified checksum.
+---
+
+## go install
+
+```bash
+go install github.com/n0nuser/obramat-cli/cmd/obramat@latest
+obramat --version
+```
+
+## Release binaries
+
+Each [release](https://github.com/n0nuser/obramat-cli/releases) has archives for Linux, macOS and
+Windows on amd64 and arm64, plus `checksums.txt` with a GitHub provenance attestation.
+
+```bash
+gh release download --repo n0nuser/obramat-cli --pattern 'obramat_*_linux_amd64.tar.gz' --pattern checksums.txt
+sha256sum --ignore-missing -c checksums.txt
+gh attestation verify checksums.txt --repo n0nuser/obramat-cli
+tar xzf obramat_*_linux_amd64.tar.gz obramat && mv obramat ~/.local/bin/
+```
+
+## From source
+
+```bash
+git clone https://github.com/n0nuser/obramat-cli && cd obramat-cli
+make build   # bin/obramat
+```
+
+## Check it
+
+```bash
+obramat doctor --format pretty
+```
+
+## Updates
+
+`obramat update` replaces a release binary with the latest release after checking its checksum.
+`--check` only reports. Interactive commands look for a release at most once a day and ask first;
+`OBRAMAT_NO_UPDATE_CHECK=1` turns that off. Builds from source are left alone.
+
+## Files
+
+| what | where |
+|---|---|
+| config | `~/.config/obramat-cli/config.toml` |
+| watches and events | `~/.local/share/obramat-cli/state.db` |
+| store list cache | `~/.cache/obramat-cli/stores.json` |
+| timer log | `~/.local/state/obramat-cli/obramat-watch.log` |
+
+The XDG variables move them; `obramat config path` prints them.

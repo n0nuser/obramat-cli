@@ -1,0 +1,29 @@
+---
+title: Examples
+description: Recipes with jq.
+---
+
+Cheapest 15 mm OSB with at least 40 boards at your store:
+
+```bash
+obramat search "osb 15" --store 4 --sort price_asc \
+  | jq -r '.products[] | select(.stock.quantity >= 40) | "\(.price.amount) €\t\(.stock.quantity)\t\(.title)"'
+```
+
+Which warehouses have 100 sacks of a cement:
+
+```bash
+obramat store stock 10364753 --all | jq -r '.stores[] | select(.stock.quantity >= 100) | .store.name'
+```
+
+Compare one product's price at two stores:
+
+```bash
+for s in 4 12; do obramat product show 25064668 --store $s | jq -r '"\(.store.name): \(.price.amount) €"'; done
+```
+
+Every brand of tile adhesive the site lists:
+
+```bash
+obramat search filters "cemento cola" | jq -r '.[] | select(.label=="Marca") | .values[].value'
+```
