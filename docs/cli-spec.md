@@ -277,6 +277,13 @@ Requests from one process are spaced at least 400 ms apart, 1.5 s inside sweeps 
 `store stock --all`). The store cookie is built for each request that needs it; the session's cookies
 ride beside it, and a `customer_context` from the export is dropped when `--store` sets one.
 
+Transient failures get a bounded retry at the request path, never more than twice: a 5xx or a
+transport/timeout error is retried after 500 ms, then 1 s (the doubling is capped at 5 s), and a 429
+whose `Retry-After` (seconds or HTTP-date) is at most 2 minutes is retried once after that wait. Every
+attempt keeps the request spacing. A 429 with a longer `Retry-After` is reported with the wait in the
+message; a DataDome 403, a shape change and a usage error are never retried. A 403 or a surfaced 429 is
+exit 5 and starts the pause below.
+
 After a block (exit 5) the CLI writes `$XDG_CACHE_HOME/obramat-cli/blocked-until` and, for the next
 10 minutes, refuses every command that would contact the site with exit 5 and the time the pause ends,
 without sending anything. Local commands (`config`, `watch list`, `watch events`, `sink`, `skills`) keep

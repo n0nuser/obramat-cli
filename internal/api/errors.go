@@ -1,6 +1,9 @@
 package api
 
-import "fmt"
+import (
+	"fmt"
+	"time"
+)
 
 // Kind sorts every failure into the buckets the exit codes are built on, so
 // the CLI never has to read an error message to decide what happened.
@@ -59,6 +62,10 @@ type Error struct {
 	Body      string
 	Msg       string
 	Retryable bool
+	// RetryAfter is a 429's Retry-After wait; RetryAfterSet says the header
+	// was there at all, since 0 is a valid value.
+	RetryAfter    time.Duration
+	RetryAfterSet bool
 }
 
 func (e *Error) Error() string { return e.Msg }

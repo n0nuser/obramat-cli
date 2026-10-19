@@ -47,6 +47,8 @@ type Client struct {
 
 	mu   sync.Mutex
 	last time.Time
+	// retryBase is the wait before the first transient retry (tests shrink it).
+	retryBase time.Duration
 }
 
 // New builds a client. OBRAMAT_BASE_URL points it at a fake server in tests.
@@ -58,11 +60,12 @@ func New(version string) *Client {
 	return &Client{
 		// ChromeTransport presents a Chrome TLS hello: Go's own handshake
 		// beside a real browser session is the pair DataDome scores as a bot.
-		HTTP:     &http.Client{Transport: ChromeTransport(nil), Timeout: 25 * time.Second},
-		Base:     base,
-		UA:       browserUA + " obramat-cli/" + version,
-		Gap:      400 * time.Millisecond,
-		SweepGap: 1500 * time.Millisecond,
+		HTTP:      &http.Client{Transport: ChromeTransport(nil), Timeout: 25 * time.Second},
+		Base:      base,
+		UA:        browserUA + " obramat-cli/" + version,
+		Gap:       400 * time.Millisecond,
+		SweepGap:  1500 * time.Millisecond,
+		retryBase: defaultRetryBase,
 	}
 }
 
@@ -105,9 +108,54 @@ type response struct {
 	url    *url.URL // after redirects
 }
 
-// get performs one GET. 2xx and 404 come back as a response; everything else
-// is classified into *Error.
+// Retry policy. One request gets at most two more attempts, and only for
+// failures that a second try can plausibly fix.
+const (
+	retryAttempts    = 3                      // the first try plus two retries
+	defaultRetryBase = 500 * time.Millisecond // doubles per attempt, up to retryCap
+	retryCap         = 5 * time.Second
+	// maxRetryAfter is the longest 429 wait the CLI sits through. A longer
+	// one is reported with the wait, not retried.
+	maxRetryAfter = 2 * time.Minute
+)
+
+// get performs one GET with a bounded retry for transient failures. 2xx and
+// 404 come back as a response; everything else is classified into *Error.
+//
+// Retried: 5xx and transport errors (up to two more attempts, 500 ms then 1 s,
+// capped at 5 s) and a 429 whose Retry-After is short (once, after the wait).
+// Never retried: a DataDome 403 (KindBlocked), a shape change, a usage error.
+// Every attempt goes through wait, so the retries keep the request spacing.
 func (c *Client) get(ctx context.Context, r request) (*response, error) {
+	retriedAfter := false
+	for attempt := 0; ; attempt++ {
+		resp, err := c.do(ctx, r)
+		if err == nil {
+			return resp, nil
+		}
+		var e *Error
+		if !errors.As(err, &e) || !e.Retryable {
+			return nil, err
+		}
+		switch {
+		case e.Kind == KindNetwork && attempt+1 < retryAttempts:
+			if werr := sleepCtx(ctx, c.backoff(attempt)); werr != nil {
+				return nil, werr
+			}
+		case e.Kind == KindBlocked && e.Status == http.StatusTooManyRequests &&
+			!retriedAfter && e.RetryAfterSet && e.RetryAfter <= maxRetryAfter:
+			retriedAfter = true
+			if werr := sleepCtx(ctx, e.RetryAfter); werr != nil {
+				return nil, werr
+			}
+		default:
+			return nil, err
+		}
+	}
+}
+
+// do is one attempt: build, send, read, classify.
+func (c *Client) do(ctx context.Context, r request) (*response, error) {
 	u := c.Base + r.path
 	if len(r.query) > 0 {
 		sep := "?"
@@ -154,6 +202,9 @@ func (c *Client) get(ctx context.Context, r request) (*response, error) {
 	c.absorbCookies(req.URL, resp)
 
 	switch {
+	case resp.StatusCode == http.StatusTooManyRequests:
+		wait, known := retryAfter(resp.Header.Get("Retry-After"), time.Now())
+		return nil, rateLimited(r.endpoint, wait, known)
 	case isBlock(resp, body):
 		return nil, &Error{Kind: KindBlocked, Status: resp.StatusCode, Endpoint: r.endpoint, Retryable: true,
 			Msg: fmt.Sprintf("obramat.es bot protection refused the request (HTTP %d). Wait a few minutes before retrying, and keep the request rate low", resp.StatusCode)}
@@ -168,13 +219,77 @@ func (c *Client) get(ctx context.Context, r request) (*response, error) {
 	return nil, e
 }
 
-// isBlock recognises a DataDome refusal. The "captcha-delivery" string also
-// appears in the Content-Security-Policy of every normal page, so the status
-// code has to say refusal first (regression test TestNormalPageIsNotABlock).
-func isBlock(resp *http.Response, body []byte) bool {
-	if resp.StatusCode == http.StatusTooManyRequests {
-		return true
+// rateLimited classifies a 429. Retry-After may be absent; when it is present
+// its wait goes into the message, whether the CLI will sit it out or not.
+func rateLimited(endpoint string, wait time.Duration, known bool) *Error {
+	e := &Error{Kind: KindBlocked, Status: http.StatusTooManyRequests, Endpoint: endpoint, Retryable: true}
+	if !known {
+		e.Msg = "obramat.es is rate limiting (HTTP 429). Wait a few minutes before retrying"
+		return e
 	}
+	e.RetryAfter, e.RetryAfterSet = wait, true
+	e.Msg = fmt.Sprintf("obramat.es is rate limiting (HTTP 429); retry after %s", wait.Round(time.Second))
+	return e
+}
+
+// retryAfter reads a Retry-After header: delay-seconds or an HTTP-date. ok is
+// false when the header is absent or unparseable, or the date already passed.
+func retryAfter(v string, now time.Time) (time.Duration, bool) {
+	v = strings.TrimSpace(v)
+	if v == "" {
+		return 0, false
+	}
+	if secs, err := strconv.Atoi(v); err == nil {
+		if secs < 0 {
+			return 0, false
+		}
+		return time.Duration(secs) * time.Second, true
+	}
+	if t, err := http.ParseTime(v); err == nil {
+		if d := t.Sub(now); d > 0 {
+			return d, true
+		}
+		return 0, true
+	}
+	return 0, false
+}
+
+// backoff waits 500 ms, then 1 s, then 2 s… up to retryCap.
+func (c *Client) backoff(attempt int) time.Duration {
+	base := c.retryBase
+	if base <= 0 {
+		base = defaultRetryBase
+	}
+	d := base
+	for i := 0; i < attempt && d < retryCap; i++ {
+		d *= 2
+	}
+	if d > retryCap {
+		return retryCap
+	}
+	return d
+}
+
+// sleepCtx waits d, or returns early when ctx ends.
+func sleepCtx(ctx context.Context, d time.Duration) error {
+	if d <= 0 {
+		return nil
+	}
+	t := time.NewTimer(d)
+	defer t.Stop()
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-t.C:
+		return nil
+	}
+}
+
+// isBlock recognises a DataDome refusal: a 403 that carries its header or its
+// challenge page. 429 is rate limiting and is classified separately, and the
+// "captcha-delivery" string also appears in the CSP of every normal page, so
+// the status code has to say refusal first (TestNormalPageIsNotABlock).
+func isBlock(resp *http.Response, body []byte) bool {
 	if resp.StatusCode != http.StatusForbidden {
 		return false
 	}
