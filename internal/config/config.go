@@ -1,6 +1,8 @@
 // Package config owns what the CLI keeps on disk outside the watch state:
-// where files live, config.toml, and the atomic write every file goes through.
-// There are no credentials: the CLI needs no account.
+// where files live, config.toml, the imported browser session (0600), and the
+// atomic write every file goes through. There are no account credentials: the
+// session is the user's own browser cookies, and no password is ever asked
+// for.
 package config
 
 import (
@@ -19,10 +21,11 @@ const appDir = "obramat-cli"
 // Paths are resolved per call so tests and service units can move them
 // through the environment.
 type Paths struct {
-	ConfigFile string // $XDG_CONFIG_HOME/obramat-cli/config.toml, or OBRAMAT_CONFIG
-	StateDB    string // $XDG_DATA_HOME/obramat-cli/state.db: watches, seen products, events
-	CacheDir   string // $XDG_CACHE_HOME/obramat-cli: store list cache, update check
-	StateDir   string // $XDG_STATE_HOME/obramat-cli: scheduler logs
+	ConfigFile  string // $XDG_CONFIG_HOME/obramat-cli/config.toml, or OBRAMAT_CONFIG
+	SessionFile string // $XDG_CONFIG_HOME/obramat-cli/session.json: the imported browser session, 0600
+	StateDB     string // $XDG_DATA_HOME/obramat-cli/state.db: watches, seen products, events
+	CacheDir    string // $XDG_CACHE_HOME/obramat-cli: store list cache, update check
+	StateDir    string // $XDG_STATE_HOME/obramat-cli: scheduler logs
 }
 
 func DefaultPaths() Paths {
@@ -30,10 +33,11 @@ func DefaultPaths() Paths {
 	// by a test or a service unit counts.
 	xdg.Reload()
 	p := Paths{
-		ConfigFile: filepath.Join(xdg.ConfigHome, appDir, "config.toml"),
-		StateDB:    filepath.Join(xdg.DataHome, appDir, "state.db"),
-		CacheDir:   filepath.Join(xdg.CacheHome, appDir),
-		StateDir:   filepath.Join(xdg.StateHome, appDir),
+		ConfigFile:  filepath.Join(xdg.ConfigHome, appDir, "config.toml"),
+		SessionFile: filepath.Join(xdg.ConfigHome, appDir, "session.json"),
+		StateDB:     filepath.Join(xdg.DataHome, appDir, "state.db"),
+		CacheDir:    filepath.Join(xdg.CacheHome, appDir),
+		StateDir:    filepath.Join(xdg.StateHome, appDir),
 	}
 	if v := os.Getenv("OBRAMAT_CONFIG"); v != "" {
 		p.ConfigFile = v

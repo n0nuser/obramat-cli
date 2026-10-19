@@ -5,6 +5,14 @@ and needs no account. Output is JSON on stdout; `--format pretty` for people, `j
 streams, `toon` for compact model context. Errors go to stderr; `--error-format json` gives
 an envelope with `code`, `category` and `retryable`.
 
+## Bot protection
+
+obramat.es is behind DataDome and refuses scripts. Replay the user's own browser session:
+`obramat auth login --cookies FILE` (or `--har FILE`, or `--cookies-stdin`). A HAR also
+carries the browser's user agent. `obramat auth status --check` asks the site whether it still
+works; `obramat auth logout` forgets it. Without a session, commands that need the storefront
+exit 3. Sessions expire: re-import when the site starts challenging (exit 5).
+
 ## Store context
 
 Prices and stock belong to a store. Pass `--store` (code, slug or part of the name),
@@ -54,8 +62,9 @@ Events: `product.new`, `product.price_changed`, `product.stock_changed` (product
 
 ## Exit codes
 
-0 ok (also "no changes"), 1 generic, 2 usage, 4 not found, 5 blocked by the site's bot
-protection or rate limited (wait minutes, do not loop), 6 network or site down, 7 the site
-changed shape (stderr carries a prefilled issue link), 130 interrupted.
+0 ok (also "no changes"), 1 generic, 2 usage, 3 no browser session for a command that needs
+the site (`obramat auth login`), 4 not found, 5 blocked by the site's bot protection or rate
+limited (wait minutes, do not loop), 6 network or site down, 7 the site changed shape (stderr
+carries a prefilled issue link), 130 interrupted.
 
 Keep the request rate low: one command is one to a few requests; `--all` and `--pages` add more.

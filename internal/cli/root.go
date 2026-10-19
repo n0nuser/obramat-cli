@@ -25,6 +25,7 @@ type App struct {
 	Version string
 	Paths   config.Paths
 	Cfg     config.Config
+	Session *config.StoredSession
 	Client  *api.Client
 	Printer output.Printer
 
@@ -43,6 +44,8 @@ type App struct {
 	flagErrorFormat string
 	flagNoInput     bool
 	flagDebug       bool
+
+	ready bool
 }
 
 // Execute runs the CLI and returns the exit code.
@@ -57,6 +60,9 @@ func Execute(version string, args []string, stdin io.Reader, stdout, stderr io.W
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	cmd, err := root.ExecuteContextC(ctx)
+	// Persist cookie rotations whether or not the command succeeded: a
+	// challenged request still rotates the cookie the next run must send.
+	a.persistSession()
 	a.close()
 	if err == nil {
 		a.maybeUpdate(ctx, cmd)
@@ -86,6 +92,10 @@ func (a *App) rootCmd() *cobra.Command {
 
 Unofficial and read-only: no account, no cart, no orders.
 
+The site is behind bot protection, so the cli can replay your own browser's
+session: export obramat.es cookies (or a HAR) and run
+` + "`obramat auth login --cookies FILE`" + `.
+
 Output is JSON on stdout so every command pipes into jq; --format pretty is
 for reading. Errors and notices go to stderr. Prices and stock depend on the
 store: set one with --store, OBRAMAT_STORE or ` + "`obramat config set store ID`" + `.
@@ -96,6 +106,7 @@ Examples:
   obramat store near --lat 40.42 --lng -3.70 --format pretty
   obramat store stock 25064668 --all --format pretty
   obramat watch add product 25064668 --store 4 --name osb
+  obramat auth login --cookies ~/Downloads/obramat-cookies.json
 
 Agent usage: obramat skills get obramat-usage`,
 		SilenceUsage:  true,
@@ -121,7 +132,7 @@ Agent usage: obramat skills get obramat-usage`,
 	root.AddCommand(
 		a.searchCmd(), a.productCmd(), a.categoryCmd(), a.storeCmd(),
 		a.watchCmd(), a.sinkCmd(),
-		a.mcpCmd(), a.configCmd(), a.doctorCmd(), a.skillsCmd(), a.updateCmd(),
+		a.mcpCmd(), a.authCmd(), a.configCmd(), a.doctorCmd(), a.skillsCmd(), a.updateCmd(),
 	)
 	return root
 }
@@ -152,7 +163,33 @@ func (a *App) setup(cmd *cobra.Command) error {
 	if a.flagDebug {
 		a.Client.Debug = a.Stderr
 	}
+	if a.Session, err = config.LoadSession(a.Paths); err != nil {
+		return err
+	}
+	if a.Session != nil {
+		a.Client.Session = &a.Session.Session
+	}
+	a.ready = true
 	return a.checkPause(cmd)
+}
+
+// requireSession is called by the commands that talk to the storefront itself.
+func (a *App) requireSession() error {
+	if a.Session == nil {
+		return &api.Error{Kind: api.KindAuth,
+			Msg: "no browser session. Export obramat.es cookies from your browser and run `obramat auth login --cookies FILE`"}
+	}
+	return nil
+}
+
+// persistSession writes back cookies the site rotated, for file sessions only.
+func (a *App) persistSession() {
+	if !a.ready || a.Session == nil || a.Session.Source != config.SourceFile || !a.Session.Dirty() {
+		return
+	}
+	if err := config.SaveSession(a.Paths, a.Session); err != nil {
+		a.notice("could not save the rotated session: %v", err)
+	}
 }
 
 // isCobraUsage recognises cobra's own argument errors, which arrive as

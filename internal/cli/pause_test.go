@@ -64,6 +64,7 @@ func TestNeedsSite(t *testing.T) {
 	for path, want := range map[string]bool{
 		"search": true, "store stock": true, "watch check": true, "watch add product": true,
 		"watch list": false, "config set": false, "sink test": false, "skills get": false,
+		"auth login": false, "auth status": false, "auth logout": false,
 	} {
 		cmd, _, err := root.Find(strings.Fields(path))
 		if err != nil {

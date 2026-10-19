@@ -52,6 +52,12 @@ func TestBinaryContract(t *testing.T) {
 	if out, _, code := run("watch", "list"); code != 0 || strings.TrimSpace(out) != "[]" {
 		t.Fatalf("watch list: %d %q", code, out)
 	}
+	if out, _, code := run("auth", "status"); code != 0 || !strings.Contains(out, `"source": "none"`) {
+		t.Fatalf("auth status: %d %q", code, out)
+	}
+	if out, _, code := run("auth", "logout"); code != 0 || !strings.Contains(out, `"removed": false`) {
+		t.Fatalf("auth logout: %d %q", code, out)
+	}
 	if out, _, code := run("completion", "bash"); code != 0 || !strings.Contains(out, "obramat") {
 		t.Fatalf("completion: %d", code)
 	}
