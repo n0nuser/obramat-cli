@@ -77,6 +77,8 @@ obramat auth status --check
 
 either way the session is stored 0600 and no password is ever asked for; a guest session with a store selected is enough. when the site stops trusting it, harvest again or reload the site in the same browser and import. `OBRAMAT_COOKIEJAR=FILE` uses an export without storing it (for CI). `obramat auth logout` forgets the stored session.
 
+stuck? [troubleshooting](docs/troubleshooting.md) starts with `obramat doctor` and `obramat auth status --check`.
+
 ### pick your store
 
 prices and stock belong to a store. find yours and make it the default:
@@ -193,6 +195,7 @@ the docs site source is in `docs-site` (fumadocs, exported as static pages); its
 
 - [docs/cli-spec.md](docs/cli-spec.md): the interface contract
 - [docs/obramat-api-discovery.md](docs/obramat-api-discovery.md): how the site works, endpoint by endpoint
+- [docs/troubleshooting.md](docs/troubleshooting.md): the common failures, starting with `doctor`
 - [AGENTS.md](AGENTS.md): vocabulary and working rules
 - [docs/adr](docs/adr): decisions
 
