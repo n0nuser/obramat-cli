@@ -26,6 +26,20 @@ func TestResolveChromeEnv(t *testing.T) {
 	}
 }
 
+func TestResolveProfile(t *testing.T) {
+	t.Setenv(chromeProfileEnv, "/env/profile")
+	if got := resolveProfile(""); got != "/env/profile" {
+		t.Fatalf("env only: %q", got)
+	}
+	if got := resolveProfile("/flag/profile"); got != "/flag/profile" {
+		t.Fatalf("flag wins: %q", got)
+	}
+	t.Setenv(chromeProfileEnv, "")
+	if got := resolveProfile(""); got != "" {
+		t.Fatalf("neither set: %q", got)
+	}
+}
+
 func TestStoreFromSession(t *testing.T) {
 	v := `%7B%22main_store%22%3A%224%22%2C%22stores_name%22%3A%5B%7B%22id%22%3A%224%22%2C%22name%22%3A%22Obramat+Legan%C3%A9s%22%7D%5D%7D`
 	s := &api.Session{Cookies: []api.Cookie{
@@ -75,7 +89,7 @@ func TestHarvestCommandSurface(t *testing.T) {
 				continue
 			}
 			found = true
-			for _, flag := range []string{"browser-url", "chrome", "user-agent", "timeout"} {
+			for _, flag := range []string{"browser-url", "chrome", "profile", "user-agent", "timeout"} {
 				if s.Flags().Lookup(flag) == nil {
 					t.Errorf("harvest is missing --%s", flag)
 				}

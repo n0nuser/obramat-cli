@@ -16,13 +16,15 @@ import (
 
 // chromeURLEnv and chromePathEnv point the harvest at a browser without a flag.
 const (
-	chromeURLEnv  = "OBRAMAT_CHROME_URL"
-	chromePathEnv = "OBRAMAT_CHROME"
+	chromeURLEnv     = "OBRAMAT_CHROME_URL"
+	chromePathEnv    = "OBRAMAT_CHROME"
+	chromeProfileEnv = "OBRAMAT_CHROME_PROFILE"
 )
 
 type harvestFlags struct {
 	browserURL string
 	chrome     string
+	profile    string
 	userAgent  string
 	timeout    time.Duration
 }
@@ -32,22 +34,35 @@ func (a *App) harvestCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "harvest",
 		Short: "Read the session out of a real Chrome window",
-		Long: `Open obramat.es in a real Chrome and read the session it earns, instead of
+		Long: `Read the obramat.es session straight out of your real Chrome, instead of
 exporting cookies by hand.
 
-The browser opens headed so you can clear any DataDome check it shows; the
-window stays open while the command waits. If a Chrome debug endpoint is
-already running (--browser-url, OBRAMAT_CHROME_URL, or the default
-http://localhost:9222), the command attaches to it instead of launching.
+The trusted datadome cookie lives in your everyday profile, not in a fresh one,
+so the command copies just that profile's cookie store and keyfile into a temp
+profile (0700, deleted afterwards) and opens Chrome on it. Chrome 136 and up
+ignores --remote-debugging-port on the default profile, which is why it is a
+copy and not an attach. The window is headed so you can clear any check it
+shows; the command waits up to --timeout for that.
 
-A launched browser keeps its profile under the data directory, so the session
-survives across runs. The harvested cookies and the browser's own user agent
-are stored 0600 exactly as ` + "`auth login`" + ` stores an export.
+The profile is --profile / OBRAMAT_CHROME_PROFILE when set, else the first of
+the usual Chrome and Chromium locations that has cookies. Without one, or with
+--browser-url, the behaviour changes:
+
+  --browser-url URL   attach to a Chrome already listening on a devtools port
+                      (env OBRAMAT_CHROME_URL, or the default
+                      http://localhost:9222). Chrome 136+ only exposes that on
+                      a profile started with it.
+  no real profile     open a fresh window instead; it has no trusted cookie, so
+                      a captcha may need clearing by hand.
+
+The harvested cookies and the browser's own user agent are stored 0600 exactly
+as ` + "`auth login`" + ` stores an export.
 
 Examples:
   obramat auth harvest
-  obramat auth harvest --chrome /usr/bin/chromium --timeout 2m
-  obramat auth harvest --browser-url http://localhost:9222`,
+  obramat auth harvest --profile ~/.config/google-chrome --timeout 2m
+  obramat auth harvest --chrome /usr/bin/chromium
+  obramat auth harvest --browser-url http://127.0.0.1:9222`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if os.Getenv(config.CookieJarEnv) != "" {
@@ -58,6 +73,7 @@ Examples:
 			opts := harvest.Options{
 				BrowserURL:  browserURL,
 				Chrome:      chromePath,
+				Profile:     resolveProfile(f.profile),
 				UserDataDir: a.Paths.ChromeDir,
 				UserAgent:   f.userAgent,
 				Timeout:     f.timeout,
@@ -98,6 +114,7 @@ Examples:
 	fl := cmd.Flags()
 	fl.StringVar(&f.browserURL, "browser-url", "", "attach to this Chrome DevTools endpoint instead of launching (env "+chromeURLEnv+"; default: probe "+harvest.DefaultDebugURL+")")
 	fl.StringVar(&f.chrome, "chrome", "", "Chrome or Chromium binary (env "+chromePathEnv+")")
+	fl.StringVar(&f.profile, "profile", "", "real Chrome profile to copy the cookies from (env "+chromeProfileEnv+"; default: the usual Chrome/Chromium locations)")
 	fl.StringVar(&f.userAgent, "user-agent", "", "override the user agent (default: the browser's own)")
 	fl.DurationVar(&f.timeout, "timeout", harvest.DefaultTimeout, "how long to wait for the challenge to clear")
 	return cmd
@@ -151,3 +168,7 @@ func firstNonEmpty(vals ...string) string {
 func resolveChromeEnv(browserURL, chrome string) (string, string) {
 	return firstNonEmpty(browserURL, os.Getenv(chromeURLEnv)), firstNonEmpty(chrome, os.Getenv(chromePathEnv))
 }
+
+// resolveProfile picks the real Chrome profile to copy: the flag wins, then
+// the environment, then the caller's auto-detection.
+func resolveProfile(flag string) string { return firstNonEmpty(flag, os.Getenv(chromeProfileEnv)) }

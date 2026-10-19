@@ -52,8 +52,11 @@ type Options struct {
 	BrowserURL string
 	// Chrome is the browser binary. Empty searches PATH and the usual places.
 	Chrome string
-	// UserDataDir is the profile a launched browser keeps, so the DataDome
-	// session survives across runs.
+	// Profile is the real Chrome profile (a user-data-dir) to copy the cookies
+	// from. Empty auto-detects. When none is found, a fresh window is used.
+	Profile string
+	// UserDataDir is where a fresh browser keeps its profile, and where the
+	// temp profile of a copy launch is created.
 	UserDataDir string
 	// UserAgent overrides the browser's own.
 	UserAgent string
@@ -68,16 +71,92 @@ type Result struct {
 }
 
 // Run opens the site, waits for the challenge to clear, then reads the
-// cookies and the user agent. It never returns on a timeout without saying so.
+// cookies and the user agent.
+//
+// It harvests from the user's real Chrome profile by default: a copy of the
+// cookie store is what carries the trusted DataDome cookie, which a brand-new
+// profile does not have. Chrome 136+ ignores --remote-debugging-port on the
+// default profile, so the copy is launched from a temp non-default profile
+// instead of attaching to the running browser. Without a real profile it
+// falls back to a fresh window, which may need a human to clear a captcha.
 func Run(ctx context.Context, o Options) (Result, error) {
 	if o.Timeout <= 0 {
 		o.Timeout = DefaultTimeout
 	}
-	allocCtx, cancelAlloc, err := allocator(ctx, o)
+	if o.BrowserURL != "" {
+		return attachAndHarvest(ctx, NormalizeCDPURL(o.BrowserURL), o)
+	}
+	chromePath, err := FindChrome(o.Chrome, execLookPath)
 	if err != nil {
 		return Result{}, err
 	}
-	defer cancelAlloc()
+	profile, err := FindProfile(o.Profile, DefaultProfileDirs(), isFile)
+	if err != nil {
+		return freshAndHarvest(ctx, chromePath, o)
+	}
+	return profileAndHarvest(ctx, chromePath, profile, o)
+}
+
+func attachAndHarvest(ctx context.Context, url string, o Options) (Result, error) {
+	allocCtx, cancel := remote.NewAllocator(ctx, url)
+	defer cancel()
+	return harvest(ctx, allocCtx, o)
+}
+
+func freshAndHarvest(ctx context.Context, chromePath string, o Options) (Result, error) {
+	opts := append(slices.Clone(chromedp.DefaultExecAllocatorOptions[:]),
+		// Headed on purpose: a fresh profile has no trusted cookie yet, so a
+		// person may have to clear DataDome's captcha.
+		chromedp.VisibleWindow,
+		chromedp.ExecPath(chromePath),
+		chromedp.UserDataDir(o.UserDataDir),
+	)
+	allocCtx, cancel := chromedp.NewExecAllocator(ctx, opts...)
+	defer cancel()
+	return harvest(ctx, allocCtx, o)
+}
+
+func profileAndHarvest(ctx context.Context, chromePath, profile string, o Options) (Result, error) {
+	if o.UserDataDir != "" {
+		if err := os.MkdirAll(o.UserDataDir, 0o700); err != nil {
+			return Result{}, err
+		}
+	}
+	dir, err := os.MkdirTemp(o.UserDataDir, "harvest-*") // created 0700
+	if err != nil {
+		return Result{}, fmt.Errorf("temp profile: %w", err)
+	}
+	_ = os.Chmod(dir, 0o700)
+	var cmd *exec.Cmd
+	// Always stop the browser and delete the copy of the user's cookies, on
+	// every path out of here.
+	defer func() { Cleanup(cmd, dir) }()
+
+	files, err := CopyPlan(profile)
+	if err != nil {
+		return Result{}, err
+	}
+	if err := CopyProfileFiles(profile, dir, files); err != nil {
+		return Result{}, fmt.Errorf("copying the profile: %w", err)
+	}
+	port, err := FreePort()
+	if err != nil {
+		return Result{}, err
+	}
+	if cmd, err = StartChrome(chromePath, dir, port); err != nil {
+		return Result{}, err
+	}
+	if err := WaitCDP(ctx, port, cdpStartTimeout); err != nil {
+		return Result{}, err
+	}
+	allocCtx, cancel := remote.NewAllocator(ctx, fmt.Sprintf("http://127.0.0.1:%d", port))
+	defer cancel()
+	return harvest(ctx, allocCtx, o)
+}
+
+// harvest navigates, waits for the challenge to clear, and reads the session
+// on a browser context the caller built.
+func harvest(ctx context.Context, allocCtx context.Context, o Options) (Result, error) {
 	browserCtx, cancelBrowser := chromedp.NewContext(allocCtx)
 	defer cancelBrowser()
 
@@ -96,27 +175,6 @@ func Run(ctx context.Context, o Options) (Result, error) {
 		return Result{}, fmt.Errorf("reading the cookies: %w", err)
 	}
 	return Result{UserAgent: strings.TrimSpace(ua), Cookies: cookies}, nil
-}
-
-func allocator(ctx context.Context, o Options) (context.Context, context.CancelFunc, error) {
-	if o.BrowserURL != "" {
-		ctx, cancel := remote.NewAllocator(ctx, o.BrowserURL)
-		return ctx, cancel, nil
-	}
-	path, err := FindChrome(o.Chrome, execLookPath)
-	if err != nil {
-		return nil, nil, err
-	}
-	opts := append(slices.Clone(chromedp.DefaultExecAllocatorOptions[:]),
-		// Headed on purpose: DataDome shows a captcha a person has to clear.
-		// VisibleWindow drops --headless and the "controlled by software"
-		// infobar; it needs a display.
-		chromedp.VisibleWindow,
-		chromedp.ExecPath(path),
-		chromedp.UserDataDir(o.UserDataDir),
-	)
-	ctx, cancel := chromedp.NewExecAllocator(ctx, opts...)
-	return ctx, cancel, nil
 }
 
 func waitClear(ctx context.Context, browserCtx context.Context, timeout time.Duration) error {
