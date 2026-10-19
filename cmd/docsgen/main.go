@@ -119,7 +119,9 @@ func flagTable(b *strings.Builder, fs *pflag.FlagSet) {
 // mdx escapes the two characters MDX treats as syntax in prose.
 func mdx(s string) string { return strings.NewReplacer("{", `\{`, "<", `\<`).Replace(s) }
 
-func cell(s string) string { return mdx(strings.ReplaceAll(strings.ReplaceAll(s, "|", `\|`), "\n", " ")) }
+func cell(s string) string {
+	return mdx(strings.ReplaceAll(strings.ReplaceAll(s, "|", `\|`), "\n", " "))
+}
 
 func yaml(s string) string { return `"` + strings.ReplaceAll(s, `"`, `\"`) + `"` }
 
