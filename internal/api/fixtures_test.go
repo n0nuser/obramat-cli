@@ -151,6 +151,20 @@ func TestFiltersParam(t *testing.T) {
 	}
 }
 
+// TestInStockFilterParam pins how --in-stock reaches the site: the
+// "En stock en Almacén" toggle is an ordinary facet, code availability, value
+// inStockInStore (see the toggle's input name/value in a listing with a store).
+func TestInStockFilterParam(t *testing.T) {
+	p := ListParams{Query: "cemento", Store: StoreRef{ID: 4}, InStock: true}
+	if got := p.request().query.Get("filters"); got != `{"availability":"inStockInStore"}` {
+		t.Fatalf("filters = %s", got)
+	}
+	plain := ListParams{Query: "cemento", Store: StoreRef{ID: 4}}
+	if got := plain.request().query.Get("filters"); got != "" {
+		t.Fatalf("in-stock off still sent filters = %s", got)
+	}
+}
+
 func TestPastLastPageIsNotFound(t *testing.T) {
 	_, err := parseSSR(fixture(t, "search_cemento_p11_dependency-error.html.gz"), "GET /search")
 	if e, ok := err.(*Error); !ok || e.Kind != KindNotFound {

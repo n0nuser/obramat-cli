@@ -27,7 +27,8 @@ obramat category list --parent /madera/
 ```
 
 `{"query","category","store","page","pages","total","sort","products":[{ref,title,url,image,brand,price:{amount,amount_ex_vat,tax,unit,currency,per_measure},store,stock:{quantity,available,label},badges,delivery}]}`.
-The site serves at most 10 pages. `--in-stock` filters on the CLI side and needs a store.
+The site serves at most 10 pages. `--in-stock` needs a store and uses the site's own
+"En stock en Almacén" filter.
 
 ## Products and stock
 

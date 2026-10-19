@@ -99,15 +99,32 @@ type ListParams struct {
 	Sort     string // site value: relevance, price-asc, price-desc
 	Page     int
 	Store    StoreRef
+	// InStock asks the site for its "En stock en Almacén" toggle: only the
+	// products the store in context has. The toggle exists only for a listing
+	// that has a store; without one the site ignores it.
+	InStock bool
 }
+
+// The site's stock toggle, from the stockAndDeliveryFilters of a listing with a
+// store: a facet named availability whose single value is inStockInStore. The
+// toggle's markup uses exactly those words (input name="availability"
+// value="inStockInStore"), and the site's own JS builds its id from them.
+const (
+	inStockFacet = "availability"
+	inStockValue = "inStockInStore"
+)
 
 // filtersParam encodes the site's `filters` query parameter: a JSON object of
 // facet code to values joined with "#|", with the price range as
-// range-price-min and range-price-max.
+// range-price-min and range-price-max. The stock toggle travels the same way
+// as any other facet.
 func (p ListParams) filtersParam() string {
 	m := map[string]string{}
 	for code, vals := range p.Filters {
 		m[code] = strings.Join(vals, "#|")
+	}
+	if p.InStock {
+		m[inStockFacet] = inStockValue
 	}
 	if p.MinPrice != nil {
 		m["range-price-min"] = strconv.FormatFloat(*p.MinPrice, 'f', -1, 64)

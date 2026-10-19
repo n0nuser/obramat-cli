@@ -89,15 +89,18 @@ The page embeds the listing state:
                         {"id":"lazy-1","codes":[...],"lazy":true},{"id":"lazy-2","codes":[...],"lazy":true}],
               "number":657},
   "sorts":[{"code":"relevance","label":"Relevancia","applied":true},{"code":"price-asc",...},{"code":"price-desc",...}],
-  "filters":{"stockAndDeliveryFilters":[],
+  "filters":{"stockAndDeliveryFilters":[{"type":"toggle","code":"availability","label":"En stock en Almacén",
+               "value":"inStockInStore","applied":false,"total":211,"storeSubLabel":"Obramat Leganés"}],
              "productFilters":[{"type":"range","code":"price","label":"Precio","applied":true,"min":5,"max":20,"unit":"€"},
                                {"type":"standard","code":"attribute-06575","label":"Marca","applied":true,
                                 "values":[{"value":"WEBER","total":13,"applied":true},...]}]}}}}
 </script>
 ```
 
-`codes` is the ranking. `stockAndDeliveryFilters` was empty in every capture, with and without a store:
-the site offers no stock filter, which is why `--in-stock` filters on the CLI side.
+`codes` is the ranking. `stockAndDeliveryFilters` carries the site's stock toggle and is populated only
+when a store is in context: `{"type":"toggle","code":"availability","label":"En stock en Almacén",
+"value":"inStockInStore","applied":false,"total":211}`. It travels in the `filters` parameter like any
+other facet (`{"availability":"inStockInStore"}`) and is what `--in-stock` sends.
 
 **Product cards** follow, one `<li class="product-thumbnail product-thumbnail-item …" data-reflm="REF">`
 each. What the CLI reads from a card:
@@ -135,6 +138,7 @@ Repro:
 ```bash
 obramat search cemento --brand WEBER --min-price 5 --max-price 20 --sort price_asc --debug
 obramat search --category /madera/tableros/tableros-y-tablas-de-madera/ --store 4
+obramat search cemento --store 4 --in-stock --debug   # filters={"availability":"inStockInStore"}
 obramat search filters cemento --format pretty
 ```
 

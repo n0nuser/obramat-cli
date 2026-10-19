@@ -67,8 +67,9 @@ stock quantities. With a store, listings contain only what that store sells. See
 - `--brand` and `--filter` map to the site's facets (`filters` query parameter); `--min-price` and
   `--max-price` to its price range. `search filters` lists the facets, their codes and value counts for a
   search or category.
-- `--in-stock` keeps products with stock at the store. The site offers no such filter, so the CLI filters
-  the page it got; it requires a store.
+- `--in-stock` keeps products with stock at the store, through the site's own "En stock en Almacén" filter
+  (`availability=inStockInStore`, offered only when a store is set; it requires one). Cards the site still
+  returns without a stock line for that store are dropped as well.
 - The site serves 48 products per page and at most 10 pages; `--page 11` is exit 4.
 - JSON: `{query, category, store, page, pages, total, sort, products: [Product]}`. JSONL: one Product per
   line.

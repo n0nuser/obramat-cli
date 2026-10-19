@@ -19,7 +19,8 @@ site offers: brand, price range, sort order and any facet from
 
 Prices and stock are for the store in context. Without one the site shows a
 default web price, which for some products is a Canary Islands (IGIC) price,
-and no stock. A store also narrows results to what it sells.
+and no stock. A store also narrows results to what it sells, and turns on the
+site's "En stock en Almacén" filter, which --in-stock uses.
 
 ```bash
 obramat search "tablero osb" --format pretty
@@ -34,7 +35,7 @@ obramat search cemento --pages 3 --format jsonl
 | `--brand` | stringArray | - | brand, repeatable (the site's Marca facet) |
 | `--category` | string | - | browse this category path instead of searching (see `obramat category list`) |
 | `--filter` | stringArray | - | facet CODE=VALUE, repeatable (see `obramat search filters`) |
-| `--in-stock` | bool | `false` | only products with stock at the store (filtered by the cli: the site has no such filter) |
+| `--in-stock` | bool | `false` | only products with stock at the store (the site's "En stock en Almacén" filter; needs a store) |
 | `--limit` | int | `0` | stop after this many products (0: whole pages) |
 | `--max-price` | float64 | `0` | maximum price in EUR |
 | `--min-price` | float64 | `0` | minimum price in EUR |
@@ -64,7 +65,7 @@ obramat search filters --category /madera/tableros/tableros-y-tablas-de-madera/
 | `--brand` | stringArray | - | brand, repeatable (the site's Marca facet) |
 | `--category` | string | - | browse this category path instead of searching (see `obramat category list`) |
 | `--filter` | stringArray | - | facet CODE=VALUE, repeatable (see `obramat search filters`) |
-| `--in-stock` | bool | `false` | only products with stock at the store (filtered by the cli: the site has no such filter) |
+| `--in-stock` | bool | `false` | only products with stock at the store (the site's "En stock en Almacén" filter; needs a store) |
 | `--max-price` | float64 | `0` | maximum price in EUR |
 | `--min-price` | float64 | `0` | minimum price in EUR |
 | `--sort` | string | `relevance` | order: relevance, price_asc, price_desc |

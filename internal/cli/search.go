@@ -41,7 +41,7 @@ func bindSearchFlags(cmd *cobra.Command, f *searchFlags) {
 	fl.Float64Var(&f.maxPrice, "max-price", 0, "maximum price in EUR")
 	fl.StringVar(&f.sort, "sort", "relevance", "order: relevance, price_asc, price_desc")
 	fl.StringVar(&f.store, "store", "", storeFlagUsage)
-	fl.BoolVar(&f.inStock, "in-stock", false, "only products with stock at the store (filtered by the cli: the site has no such filter)")
+	fl.BoolVar(&f.inStock, "in-stock", false, "only products with stock at the store (the site's \"En stock en Almacén\" filter; needs a store)")
 	_ = cmd.RegisterFlagCompletionFunc("sort", cobra.FixedCompletions([]string{"relevance", "price_asc", "price_desc"}, cobra.ShellCompDirectiveNoFileComp))
 }
 
@@ -93,14 +93,20 @@ func (a *App) listParams(ctx context.Context, cmd *cobra.Command, keywords []str
 		return p, err
 	}
 	p.Store = store
-	if f.inStock && store.ID == 0 {
-		return p, output.Usagef("--in-stock needs a store: stock is per store (--store, OBRAMAT_STORE or `obramat config set store ID`)")
+	if f.inStock {
+		if store.ID == 0 {
+			return p, output.Usagef("--in-stock needs a store: stock is per store (--store, OBRAMAT_STORE or `obramat config set store ID`)")
+		}
+		p.InStock = true
 	}
 	return p, nil
 }
 
-// inStock keeps products the store has. Filtering each page before
-// counting lets --limit fill up from later pages.
+// inStock keeps products the store has. The site's own toggle already asks for
+// them; this drops any card the site still returned without a stock line (the
+// toggle is tied to the store in context, so a page can still carry
+// neighbouring-store products), and filtering each page before counting lets
+// --limit fill up from later pages.
 func inStock(ps []api.Product) []api.Product {
 	kept := ps[:0]
 	for _, p := range ps {
@@ -159,7 +165,8 @@ site offers: brand, price range, sort order and any facet from
 
 Prices and stock are for the store in context. Without one the site shows a
 default web price, which for some products is a Canary Islands (IGIC) price,
-and no stock. A store also narrows results to what it sells.
+and no stock. A store also narrows results to what it sells, and turns on the
+site's "En stock en Almacén" filter, which --in-stock uses.
 
 Examples:
   obramat search "tablero osb" --format pretty

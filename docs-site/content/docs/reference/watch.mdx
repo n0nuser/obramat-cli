@@ -60,7 +60,7 @@ obramat watch add search [keywords...] [flags]
 | `--category` | string | - | browse this category path instead of searching (see `obramat category list`) |
 | `--emit-initial` | bool | `false` | report what exists now as product.new events instead of a silent baseline |
 | `--filter` | stringArray | - | facet CODE=VALUE, repeatable (see `obramat search filters`) |
-| `--in-stock` | bool | `false` | only products with stock at the store (filtered by the cli: the site has no such filter) |
+| `--in-stock` | bool | `false` | only products with stock at the store (the site's "En stock en Almacén" filter; needs a store) |
 | `--interval` | duration | `0s` | how often the watch is due (default: config watch.interval, else 30m; at least 5m) |
 | `--max-price` | float64 | `0` | maximum price in EUR |
 | `--min-price` | float64 | `0` | minimum price in EUR |
