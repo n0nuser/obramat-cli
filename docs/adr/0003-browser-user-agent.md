@@ -1,7 +1,11 @@
 # 0003. A browser User-Agent, plain net/http
 
 Date: 2026-10-19
-Status: accepted
+Status: superseded by [0004](0004-browser-session-and-chrome-tls.md)
+
+> Superseded: the User-Agent alone stopped being enough once DataDome refused the address. The choices
+> below (request spacing, block detection, the 10-minute pause) still hold; the handshake and the session
+> are now [ADR 0004](0004-browser-session-and-chrome-tls.md).
 
 ## Context
 

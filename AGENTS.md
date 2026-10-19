@@ -15,6 +15,13 @@ catalogue, see a product's price and stock at each store, and get told when eith
 
 ## Language
 
+### Access
+
+**Session**:
+The user's own browser cookies (and user agent) that the CLI replays to get past bot protection, stored
+0600 on the machine. Imported with `obramat auth login`. Not an account and not a login.
+_Avoid_: credentials, token, profile, cookie jar (except `OBRAMAT_COOKIEJAR`)
+
 ### Catalogue
 
 **Product**:

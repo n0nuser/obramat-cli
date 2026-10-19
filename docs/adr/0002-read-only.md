@@ -16,8 +16,10 @@ No cart, no orders, no quotes, no login. Every command is a read. The MCP server
 
 ## Consequences
 
-- No credentials to store, protect or expire, so no `auth` noun and no `--profile`. Exit code 3 stays
-  reserved for symmetry with the error table and is never produced.
+- No account credentials to store, protect or expire, and no `--profile`. The one thing kept is the
+  user's own browser session (cookies, 0600), and only to get past bot protection: see
+  [ADR 0004](0004-browser-session-and-chrome-tls.md). It is not an account. Exit code 3 is produced for a
+  command that needs the storefront with no session imported.
 - Buying stays in the browser. `product show` prints the product URL to hand off to.
 - If an account-only read (for example professional prices) becomes worth having, it needs its own ADR
   for credential handling.

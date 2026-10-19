@@ -1,0 +1,55 @@
+---
+title: Bot protection
+description: Replay your own browser session so the CLI gets through DataDome.
+---
+
+obramat.es is behind DataDome, which answers scripts with a challenge page (a 403 with a captcha). A
+plain HTTP client is refused whatever it sends. `obramat` gets through the way your browser does: by
+replaying your own session, over a Chrome-like TLS handshake.
+
+This is not a login. No password is ever asked for, and no account is needed — a guest session with a
+store selected is enough.
+
+## Import a session
+
+1. Open obramat.es in Chrome and choose your store.
+2. Export the cookies with a cookie-export extension (JSON or `cookies.txt`), or save a HAR from
+   DevTools → Network with *Allow to generate HAR with sensitive data* enabled.
+3. Pass the file:
+
+```bash
+obramat auth login --cookies ~/Downloads/obramat-cookies.json
+obramat auth login --har ~/Downloads/obramat.har
+pbpaste | obramat auth login --cookies-stdin --cookies-format header
+```
+
+Only `obramat.es` cookies are kept, so a whole-browser export is safe to pass. A HAR also carries the
+browser's user agent and its `Sec-CH-UA*` hints. The session is stored `0600` under the config directory
+and written atomically. `--no-check` skips the one request `login` makes to confirm the session works.
+
+## Inspect and forget
+
+```bash
+obramat auth status
+obramat auth status --check   # one request: does the storefront still trust it?
+obramat auth logout
+```
+
+`status` prints cookie names only; values are never written to stdout.
+
+<Callout type="info" title="Sessions expire">
+  DataDome rotates its cookie and stops trusting sessions. When it does, every site command exits 5
+  until you reload obramat.es in the same browser and import again.
+</Callout>
+
+## CI and scripts
+
+`OBRAMAT_COOKIEJAR=FILE` reads an export on every run instead of the stored session and is never copied
+to disk, rotations included. `auth login` refuses to shadow it.
+
+## What is sent
+
+With a session, the CLI sends your browser's user agent verbatim, the session's cookies, and any client
+hints the export carried. The store a command asks for (`--store`, `OBRAMAT_STORE`, `config store`)
+still wins: a `customer_context` in the export is dropped when one is set. See
+[ADR 0004](https://github.com/n0nuser/obramat-cli/blob/main/docs/adr/0004-browser-session-and-chrome-tls.md).

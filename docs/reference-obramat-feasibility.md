@@ -1,8 +1,13 @@
 # obramat.es feasibility
 
-**Verdict: viable: server-rendered HTML and two JSON/HTML endpoints, reachable with Go's standard `net/http` and a browser User-Agent. No login, no TLS fingerprinting, no headless browser.**
+**Verdict: viable: server-rendered HTML and two JSON/HTML endpoints. No official API and no login.
+DataDome answers a bare client, so the CLI replays the user's own browser session over a Chrome TLS
+handshake (see [ADR 0004](adr/0004-browser-session-and-chrome-tls.md)); the sitemaps answer without it.**
 
-Probed 2026-10-18/19 from a residential connection in Spain.
+Probed 2026-10-18/19 from a residential connection in Spain. Updated 2026-10-19: after a burst of
+requests the address itself was refused (403) for a long stretch, `curl` and the CLI alike, so the
+User-Agent-only approach recorded below was not durable. The site notes and fixture captures still hold;
+the transport and the session are the later additions.
 
 ## The assumed blocker: DataDome
 
@@ -23,9 +28,12 @@ curl -sS -o /dev/null -w '%{http_code}\n' -A 'obramat-cli/0.1.0' -H 'Accept: tex
   'https://www.obramat.es/search?q=yeso'                                     # 403
 ```
 
-The same holds for Go's `net/http` (its TLS fingerprint differs from curl's): homepage, two searches and a
-sitemap all answered 200 with real content in a test program. The string `captcha-delivery` also appears in
-the Content-Security-Policy meta of every normal page, so it is not by itself a sign of a block.
+The same held for Go's `net/http` (its TLS fingerprint differs from curl's): homepage, two searches and a
+sitemap all answered 200 with real content. That did not last: a burst of requests got the address
+refused (403, the same 773-byte page) for a long stretch afterwards, no matter the client. The CLI now
+presents Chrome's TLS hello (`utls`) and replays the user's browser session; see
+[ADR 0004](adr/0004-browser-session-and-chrome-tls.md). The string `captcha-delivery` also appears in the
+Content-Security-Policy meta of every normal page, so it is not by itself a sign of a block.
 
 A store-header endpoint answered one burst of requests with a DataDome JSON interstitial
 (`{"url":"https://geo.captcha-delivery.com/interstitial/..."}`) after a cookie from a flagged request was
@@ -57,7 +65,8 @@ Store context (prices and stock of one warehouse) is a cookie the visitor's brow
 ## Login
 
 Not needed. Prices, per-store prices and per-store stock are public. The CLI is read-only: no cart, no
-order, no account.
+order, no account. What it imports is the visitor's own browser session (cookies), only so the request
+looks like the browser that earned them; see [ADR 0004](adr/0004-browser-session-and-chrome-tls.md).
 
 ## Terms and scope
 

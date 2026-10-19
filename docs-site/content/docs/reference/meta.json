@@ -3,6 +3,7 @@
   "pages": [
     "index",
     "global-flags",
+    "auth",
     "category",
     "config",
     "doctor",

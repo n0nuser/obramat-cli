@@ -29,6 +29,7 @@ category   list
 store      list | near | show STORE | stock PRODUCT
 watch      add (search|product) | list | remove | check | run | events | service (install|uninstall|status)
 sink       list | test
+auth       login | status | logout
 mcp        (no verb: serves) | install claude-code|codex|cursor
 config     path | list | get | set
 doctor
@@ -37,8 +38,9 @@ update
 completion bash|zsh|fish|powershell
 ```
 
-No account commands: the CLI is read-only and the site's public pages carry everything it reads. No cart,
-no orders, no login. See [ADR 0002](adr/0002-read-only.md).
+No account commands: the CLI is read-only and the site's public pages carry everything it reads. `auth`
+imports the user's own browser session to get past bot protection; it is not a login and no password is
+ever asked for. See [ADR 0002](adr/0002-read-only.md) and [ADR 0004](adr/0004-browser-session-and-chrome-tls.md).
 
 ### Arguments
 
@@ -166,6 +168,27 @@ command = ["/home/me/bin/on-obramat-event"]
 
 `sink list` shows each and what is wrong with it; `sink test NAME` sends a made-up event.
 
+### auth
+
+The site is behind bot protection that answers scripts with a challenge page. The CLI gets through by
+replaying the user's own browser session over a Chrome-like TLS handshake; no account and no password
+are involved.
+
+- `auth login [--cookies FILE | --har FILE | --cookies-stdin] [--cookies-format auto|json|netscape|header|har]
+  [--user-agent UA] [--no-check]`: import an export. Accepted: Cookie-Editor / EditThisCookie JSON (array
+  or `{"url","cookies"}` wrapper), DevTools cookie lists, Netscape `cookies.txt`, a raw `Cookie:` header,
+  HAR 1.2. Only `obramat.es` cookies are kept, so a whole-browser export is fine. A HAR also carries the
+  browser's user agent and `Sec-CH-UA*` hints. The session is stored 0600 at
+  `$XDG_CONFIG_HOME/obramat-cli/session.json`; `login` then asks the storefront whether it works unless
+  `--no-check`.
+- `auth status [--check]`: where the session comes from and what it carries (cookie names only, never
+  values). `--check` makes one request.
+- `auth logout`: forget the stored session. The browser is not touched.
+
+`OBRAMAT_COOKIEJAR=FILE` uses an export on every run instead of the stored session and is never written
+to disk; `auth login` refuses to shadow it. Rotated cookies (DataDome rotates on most responses) are
+written back for file sessions only. A command that needs the storefront with no session exits 3.
+
 ### mcp
 
 `obramat mcp` serves MCP over stdio (JSON-RPC 2.0, one message per line; protocol revisions 2024-11-05,
@@ -214,7 +237,7 @@ has its own flag.
 | 0 | success, including "nothing changed" |
 | 1 | generic failure |
 | 2 | usage: bad flags or arguments, missing store for `--in-stock`, landing-page category |
-| 3 | reserved for auth; unused |
+| 3 | auth: a command that needs the storefront was run with no browser session (`obramat auth login`) |
 | 4 | not found: product, page past the last, store, watch |
 | 5 | blocked: the site's bot protection refused (HTTP 403 from DataDome) or HTTP 429 |
 | 6 | network, timeout, or the site down (5xx, maintenance page) |
@@ -230,12 +253,15 @@ first 300 bytes of the response; never the user's arguments.
 
 ## 9. Transport
 
-Every request goes to `https://www.obramat.es` (override with `OBRAMAT_BASE_URL` for tests) with a
-browser User-Agent ending in `obramat-cli/<version>`, `Accept` and `Accept-Language: es-ES`. The site's
-bot protection refuses a non-browser User-Agent; see [ADR 0003](adr/0003-browser-user-agent.md).
+Every request goes to `https://www.obramat.es` (override with `OBRAMAT_BASE_URL` for tests) over a
+Chrome TLS handshake (`utls`, `HelloChrome_Auto`, ALPN pinned to `http/1.1`). With an imported session
+the browser's User-Agent is sent verbatim; without one, a browser User-Agent ending in
+`obramat-cli/<version>` is used. `Accept: application/json` or `text/html` and
+`Accept-Language: es-ES`. The site's bot protection scores the handshake, the `datadome` cookie, the
+User-Agent and the client hints together; see [ADR 0004](adr/0004-browser-session-and-chrome-tls.md).
 Requests from one process are spaced at least 400 ms apart, 1.5 s inside sweeps (`store list`,
-`store stock --all`). No cookies are kept between requests; the store cookie is built for each request
-that needs it.
+`store stock --all`). The store cookie is built for each request that needs it; the session's cookies
+ride beside it, and a `customer_context` from the export is dropped when `--store` sets one.
 
 After a block (exit 5) the CLI writes `$XDG_CACHE_HOME/obramat-cli/blocked-until` and, for the next
 10 minutes, refuses every command that would contact the site with exit 5 and the time the pause ends,
@@ -248,33 +274,37 @@ back-to-back `--all` sweeps at 400 ms got a 403 that was still in place 45 s lat
 | what | path | mode |
 |---|---|---|
 | config | `$XDG_CONFIG_HOME/obramat-cli/config.toml` (or `OBRAMAT_CONFIG`) | 0600 |
+| browser session | `$XDG_CONFIG_HOME/obramat-cli/session.json` (or `OBRAMAT_COOKIEJAR=FILE` at runtime) | 0600 |
 | watch state | `$XDG_DATA_HOME/obramat-cli/state.db` | 0600 |
 | store list cache, update stamp | `$XDG_CACHE_HOME/obramat-cli/` | 0600 |
 | scheduler log | `$XDG_STATE_HOME/obramat-cli/obramat-watch.log` | |
 
-Writes are atomic (temp file and rename). Env: `OBRAMAT_STORE`, `OBRAMAT_CONFIG`, `OBRAMAT_ERROR_FORMAT`,
-`OBRAMAT_NO_UPDATE_CHECK`, `OBRAMAT_BASE_URL`, `NO_COLOR`. Precedence: flag > env > config.
+Writes are atomic (temp file and rename). Env: `OBRAMAT_STORE`, `OBRAMAT_CONFIG`, `OBRAMAT_COOKIEJAR`,
+`OBRAMAT_ERROR_FORMAT`, `OBRAMAT_NO_UPDATE_CHECK`, `OBRAMAT_BASE_URL`, `NO_COLOR`. Precedence: flag >
+env > config.
 
 ## 11. Stack
 
-cobra + pflag, `net/http`, `pelletier/go-toml/v2`, `adrg/xdg`, `modernc.org/sqlite`, `toon-go`.
-No MCP SDK, no HTML parser: the pages are read through their JSON islands and the site's own class
-names. Tests use stdlib `testing`, `httptest` serving captured responses from
-`internal/api/testdata/`, and a binary-level test with an isolated XDG home. No live calls in tests.
+cobra + pflag, `net/http`, `refraction-networking/utls` (the Chrome handshake),
+`pelletier/go-toml/v2`, `adrg/xdg`, `modernc.org/sqlite`, `toon-go`. No MCP SDK, no HTML parser: the
+pages are read through their JSON islands and the site's own class names. Tests use stdlib `testing`,
+`httptest` serving captured responses from `internal/api/testdata/` and hand-written
+`*.synthetic.*` cookie fixtures, and a binary-level test with an isolated XDG home. No live calls in
+tests.
 
 ## 12. Layout
 
 ```
 cmd/obramat/       entrypoint; under cmd/ so `go install .../cmd/obramat` names the binary obramat
 cmd/docsgen/       writes docs-site/content/docs/reference from the cobra tree
-internal/api/      everything that knows obramat.es: client, listing, product, stores, categories
-internal/cli/      one file per noun; skills/ holds the embedded notes
+internal/api/      everything that knows obramat.es: client, transport (Chrome TLS), session, listing, product, stores, categories
+internal/cli/      one file per noun (auth.go is the session); skills/ holds the embedded notes
 internal/state/    SQLite watch state
 internal/watch/    one check: fetch, diff, events
 internal/sink/     ntfy, webhook, exec
 internal/mcp/      MCP server, tool table, harness install
 internal/output/   json/jsonl/pretty/toon, error envelope, exit codes
-internal/config/   paths, config.toml, atomic writes
+internal/config/   paths, config.toml, the stored session, atomic writes
 internal/updater/  release check and checksum-verified replace
 ```
 

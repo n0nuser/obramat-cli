@@ -35,6 +35,13 @@ make build   # bin/obramat
 obramat doctor --format pretty
 ```
 
+Then import a browser session so the site's bot protection lets the CLI through — see
+[Bot protection](/docs/session):
+
+```bash
+obramat auth login --cookies ~/Downloads/obramat-cookies.json
+```
+
 ## Updates
 
 `obramat update` replaces a release binary with the latest release after checking its checksum.
@@ -46,6 +53,7 @@ obramat doctor --format pretty
 | what | where |
 |---|---|
 | config | `~/.config/obramat-cli/config.toml` |
+| browser session | `~/.config/obramat-cli/session.json` (0600) |
 | watches and events | `~/.local/share/obramat-cli/state.db` |
 | store list cache | `~/.cache/obramat-cli/stores.json` |
 | timer log | `~/.local/state/obramat-cli/obramat-watch.log` |

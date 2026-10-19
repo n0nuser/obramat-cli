@@ -8,46 +8,77 @@ products for price and stock changes. Output is JSON on stdout (`jsonl`, `pretty
 and notices on stderr, exit codes from 0 to 7 and 130.
 
 State of the tree: every command in `docs/cli-spec.md` exists and works against captured responses;
-`go build ./... && go test ./... && go vet ./...` and `make check` (staticcheck, gofmt) are clean, the
-docs site typechecks and builds, and the generated command reference (`make docs-check`) is current.
+`go build ./... && go test ./... && go vet ./...`, staticcheck, gofmt, the docs-site typecheck and
+build, and `make docs-check` are clean.
 
-This handoff lands on the last open finding of the adversarial review: `--in-stock` now uses the site's
-own "En stock en Almacén" filter instead of filtering only on the CLI side (see caveats).
+This handoff adds what the site now needs to answer at all: obramat.es is behind DataDome, and after a
+burst of requests the plain client was refused for a long stretch. The CLI now presents Chrome's TLS
+hello (`utls`) and can replay the user's own browser session (cookies plus that browser's user agent),
+imported with a new `auth` command. It also lands the change from the previous step: `--in-stock` uses
+the site's own "En stock en Almacén" filter.
+
+## Commands and files added
+
+New commands:
+
+- `obramat auth login [--cookies FILE | --har FILE | --cookies-stdin] [--cookies-format auto|json|netscape|header|har] [--user-agent UA] [--no-check]`
+- `obramat auth status [--check]`
+- `obramat auth logout`
+
+New files:
+
+- `internal/api/transport.go`: the Chrome TLS transport (`ChromeTransport`, `HelloChrome_Auto`, ALPN
+  pinned to `http/1.1`).
+- `internal/api/session.go`: `Session`/`Cookie`, `ParseExport` (Cookie-Editor / EditThisCookie JSON,
+  `{"userAgent","cookies"}` wrapper, DevTools lists, Netscape `cookies.txt`, `Cookie:` header, HAR 1.2),
+  the cookie jar and rotation, and `Summary`.
+- `internal/config/session.go`: 0600 storage at `$XDG_CONFIG_HOME/obramat-cli/session.json`,
+  `OBRAMAT_COOKIEJAR` for an env read-only session, `RemoveSession`.
+- `internal/cli/auth.go`: the `auth` command.
+- Tests and fixtures: `internal/api/session_test.go`, `internal/api/transport_test.go`,
+  `internal/config/session_test.go`, `internal/cli/auth_test.go`, and
+  `internal/api/testdata/{cookies_editor.synthetic.json, cookies_browser.synthetic.json,
+  cookies.synthetic.txt, session.synthetic.har}`.
+
+Changed: `internal/api/client.go` (transport, session user agent, cookie header, rotation);
+`internal/cli/root.go` (load/persist the session, register `auth`, exit 3 path); `internal/config/config.go`
+(`SessionFile`); docs (`docs/cli-spec.md`, `README.md`, ADR 0004 plus 0001–0003, the feasibility and
+discovery notes, the docs site and its generated reference), `AGENTS.md` and the embedded usage note.
+
+## Dependency
+
+`github.com/refraction-networking/utls v1.8.2` (`HelloChrome_Auto`). It is the only non-stdlib piece of
+the HTTP stack; the updater still uses plain `net/http`.
 
 ## Tests
 
-47 test functions (46 before this handoff). Coverage is fixture round-trips over real captured responses
-in `internal/api/testdata/`, the watch diff/state/sink layers, the MCP server, the docs generator, and a
-binary-contract test with an isolated XDG home. No test touches obramat.es.
+66 test functions (47 before this step, +19). New coverage: the export parsers over four synthetic
+cookie/HAR fixtures, the cookie/host/expiry matching, that the `datadome` cookie and the session user
+agent both go out and that a rotated cookie is absorbed, that a command's `--store` beats a
+`customer_context` carried by the export, the Chrome handshake negotiating HTTP/1.1 and still verifying
+certificates, the 0600 session file and the env-never-saved rule, and the CLI-level `auth
+login/status/logout` flow. No test touches obramat.es.
 
-New here: `api.TestInStockFilterParam` pins the exact parameter `--in-stock` sends
-(`filters={"availability":"inStockInStore"}`), and the docs that claimed the site offered no stock
-filter are corrected.
-
-## Commits
-
-- `275a271` feat(search): send the site's own in-stock filter for --in-stock
-- (this report and the review-record update) docs: handoff report and review record
-
-Pushed to `feat/initial` only. No tag, no release.
+`TestBinaryContract` gained `auth status` and `auth logout` at process level.
 
 ## Open caveats
 
-1. **Live confirmation of the new `--in-stock` filter is pending a DataDome block.** On 2026-10-19,
-   about 45 minutes after the sweep that first tripped it, DataDome still refused every request from
-   this address with the 773-byte JS-challenge page (`HTTP 403`). The filter encoding is not guesswork:
-   the toggle is in every captured listing that had a store, with `name="availability"`
-   `value="inStockInStore"`, and its markup id is built from the same two words. A live round trip and a
-   captured fixture are still owed once the address is out of the block. The CLI's own block handling
-   (`blocked-until` pause, exit 5) is in place, so a retry will not deepen it.
-2. **robots.txt** disallows `/search?q=*`, the filter and sort parameters, `/lazy/` and `/rest/`. The CLI
-   is not a crawler (one person's search or product view, at a low rate), but this is worth knowing
-   before anything bulk is built on it.
-3. **No store, no stock.** Without a store in context the site shows a default web price that for some
-   products is a Canary Islands (IGIC) price, and no stock numbers. Store-dependent results need
-   `--store`, `OBRAMAT_STORE` or `config set store`.
-4. The four `L`-severity notes in `docs/review-2026-10-19.md` remain (brand case, category accents,
-   quantity-price tiers, and the pending live check above).
+1. **The live round trip is pending a real session and an unblocked IP.** DataDome refused this
+   address for the rest of the session (403, ~773-byte JS-challenge page), so neither the new session
+   replay nor the `--in-stock` server-side filter has been exercised against the site yet. Both are
+   pinned by captured evidence and unit tests: the toggle encoding by the listing markup
+   (`name="availability" value="inStockInStore"`) and `api.TestInStockFilterParam`; the session by
+   `api.TestClientSendsSessionAndAbsorbsRotation`. The next step is a real browser export
+   (`obramat auth login --cookies FILE`), then one live `obramat search --store 4 --in-stock` and a
+   captured fixture. Recorded as R15 in `docs/review-2026-10-19.md`.
+2. **Sessions expire.** When DataDome stops trusting the imported session, every site command exits 5
+   until it is re-imported. The 10-minute local pause after a block still applies.
+3. **robots.txt** disallows `/search?q=*`, the filter and sort parameters, `/lazy/` and `/rest/`. The
+   CLI fetches what one browser page view fetches, on a person's request; this is worth knowing before
+   anything bulk is built on it.
+4. **No store, no stock.** Without a store in context the site shows a default web price that for some
+   products is a Canary Islands (IGIC) price, and no stock numbers. The `L`-severity notes in
+   `docs/review-2026-10-19.md` also stand (brand case, category accents, quantity-price tiers).
 
 ## Literal output
 
@@ -57,6 +88,10 @@ Pushed to `feat/initial` only. No tag, no release.
 Search obramat.es and check prices and stock per store from the terminal.
 
 Unofficial and read-only: no account, no cart, no orders.
+
+The site is behind bot protection, so the cli can replay your own browser's
+session: export obramat.es cookies (or a HAR) and run
+`obramat auth login --cookies FILE`.
 
 Output is JSON on stdout so every command pipes into jq; --format pretty is
 for reading. Errors and notices go to stderr. Prices and stock depend on the
@@ -68,6 +103,7 @@ Examples:
   obramat store near --lat 40.42 --lng -3.70 --format pretty
   obramat store stock 25064668 --all --format pretty
   obramat watch add product 25064668 --store 4 --name osb
+  obramat auth login --cookies ~/Downloads/obramat-cookies.json
 
 Agent usage: obramat skills get obramat-usage
 
@@ -75,6 +111,7 @@ Usage:
   obramat [command]
 
 Available Commands:
+  auth        Import, inspect or forget the browser session
   category    Browse the category tree
   completion  Generate the autocompletion script for the specified shell
   config      Read and write config.toml
@@ -101,10 +138,19 @@ Flags:
 Use "obramat [command] --help" for more information about a command.
 ```
 
+### `obramat auth status` (no session imported yet — local)
+
+```json
+{
+  "source": "none",
+  "checked": false
+}
+```
+
 ### `obramat search "tablero osb" --format pretty`
 
-Could not be run: the site refuses this address (caveat 1). The last time the binary tried, it printed
-exactly this and exited 5:
+Could not be run: the IP is still refused and no session is imported (caveat 1). The last time the
+binary reached the site it exited 5 with:
 
 ```
 obramat: obramat.es bot protection refused the request (HTTP 403). Wait a few minutes before retrying, and keep the request rate low
@@ -113,6 +159,6 @@ obramat: obramat.es bot protection refused the request (HTTP 403). Wait a few mi
 
 ### `obramat store stock 25064668 --all --format pretty`
 
-Could not be run for the same reason. The command is unchanged from the reviewed build: it needs the
-store list (`store list`, cached a week) and about fifteen store-search-result requests at the sweeps'
-1.5 s spacing, and prints one row per store (`ID`, `STORE`, `STOCK`, `DISTANCE`, `SITE SAYS`).
+Could not be run for the same reason. The command is unchanged: it needs the store list (cached a week)
+and about fifteen store-search-result requests at the sweeps' 1.5 s spacing, and prints one row per
+store (`ID`, `STORE`, `STOCK`, `DISTANCE`, `SITE SAYS`).

@@ -8,13 +8,15 @@ description: What each status means and which are worth retrying.
 | `0` | success, including "nothing changed" | |
 | `1` | generic failure | maybe |
 | `2` | usage: bad flags or arguments | no, fix the command |
+| `3` | a command that needs the site ran with no browser session | no, [`auth login`](/docs/session) |
 | `4` | not found: product, page, store, watch | no |
 | `5` | blocked by the site's bot protection, or rate limited | yes, after minutes, once |
 | `6` | network, timeout, or the site down | yes |
 | `7` | the site changed shape | no, [report it](/docs/api-changes) |
 | `130` | interrupted | |
 
-Code 3 is reserved and never used: the CLI has no account.
+Code 3 is produced only when a command that needs the storefront runs with no session imported; the CLI
+never asks for a password. See [Bot protection](/docs/session).
 
 After an exit 5 the CLI pauses for 10 minutes: commands that would contact the site fail at once with
 exit 5 and say when the pause ends, without sending a request. Local commands keep working. Retrying

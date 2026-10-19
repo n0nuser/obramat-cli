@@ -1,0 +1,85 @@
+---
+title: auth
+description: "Import, inspect or forget the browser session"
+---
+
+{/* Written by cmd/docsgen from the command tree; edit the Go help strings instead. */}
+
+## `obramat auth`
+
+Import, inspect or forget the browser session
+
+Import, inspect or forget the browser session the cli replays.
+
+obramat.es sits behind bot protection that answers scripts with a challenge
+page. The cli gets through by replaying your own browser's cookies (and its
+user agent) over a Chrome-like TLS handshake. No password is ever asked for,
+and an account is not needed: a guest session with a store selected is
+enough.
+
+### `obramat auth login`
+
+Import obramat.es cookies or a HAR from your browser
+
+```bash
+obramat auth login [flags]
+```
+
+Import obramat.es cookies or a HAR exported from your browser.
+
+1. Open obramat.es in Chrome and choose your store.
+2. Export the cookies with a cookie-export extension (JSON or cookies.txt),
+   or save a HAR from DevTools > Network with "Allow to generate HAR with
+   sensitive data" enabled.
+3. Pass the file here.
+
+Accepted: cookie JSON (array or \{"url","cookies"} wrapper), DevTools cookie
+lists, Netscape cookies.txt, a Cookie: header, HAR 1.2. Only obramat.es
+cookies are kept, so a whole-browser export is fine. A HAR also carries your
+browser's user agent, which the cli then sends.
+
+The session is stored 0600 under the config directory. For CI, point
+OBRAMAT_COOKIEJAR at an export instead: it is read on each run and never
+written to disk.
+
+```bash
+obramat auth login --cookies ~/Downloads/obramat-cookies.json
+obramat auth login --har ~/Downloads/obramat.har --no-check
+pbpaste | obramat auth login --cookies-stdin --cookies-format header
+```
+
+| Flag | Type | Default | Description |
+| --- | --- | --- | --- |
+| `--cookies` | string | - | cookie export file (JSON, cookies.txt or a Cookie: header) |
+| `--cookies-format` | string | `auto` | auto, json, netscape, header or har |
+| `--cookies-stdin` | bool | `false` | read the export from stdin |
+| `--har` | string | - | HAR file saved from DevTools with sensitive data included |
+| `--no-check` | bool | `false` | save without asking the storefront whether the session works |
+| `--user-agent` | string | - | user agent of the browser the cookies came from (a HAR provides it) |
+
+### `obramat auth logout`
+
+Forget the stored browser session
+
+```bash
+obramat auth logout
+```
+
+Delete the stored session. Your browser session is not touched.
+
+### `obramat auth status`
+
+Show the session in use (cookie names only, never values)
+
+```bash
+obramat auth status [flags]
+```
+
+Show where the session comes from and what it carries. Values are never
+printed. With --check it asks the storefront whether the session still works:
+one request, and the answer the site gives a challenged session.
+
+| Flag | Type | Default | Description |
+| --- | --- | --- | --- |
+| `--check` | bool | `false` | also ask the storefront whether the session works (one request) |
+

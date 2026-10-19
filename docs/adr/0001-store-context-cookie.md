@@ -30,7 +30,9 @@ one request.
 
 ## Consequences
 
-- One request per page for any store, no session state, nothing to expire.
+- One request per page for any store, with no store state to keep: the cookie is rebuilt each time. The
+  only thing between requests is the imported browser session ([ADR 0004](0004-browser-session-and-chrome-tls.md)),
+  which is not store state.
 - The CLI depends on the cookie format. If the site starts validating it, listings would come back
   without store prices; the regression test `TestStoreCookieCarriesName` and the fixtures pin the
   observed behaviour, and the fix is in `internal/api` only.

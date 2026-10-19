@@ -35,6 +35,13 @@ A non-browser User-Agent gets `403` with a 773-byte page that loads `ct.captcha-
 None for anything the CLI reads. There is no guest token or CSRF for GET requests (pages set an
 `lm-csrf` cookie used by the cart, which the CLI does not touch).
 
+Bot protection is the one gate. DataDome answers a client that is not a real browser (or that has
+earned a bad risk score) with a 403 challenge page, and after enough requests it refuses the address
+itself. The browser passes because it carries the `datadome` cookie, the matching user agent and the
+`Sec-CH-UA*` hints, and presents Chrome's TLS hello. The CLI reproduces that by importing the visitor's
+own session (`obramat auth login`) and using a Chrome handshake; see
+[ADR 0004](adr/0004-browser-session-and-chrome-tls.md). Sitemaps answer without it.
+
 **Store context** is the one piece of state. The site keeps it in a cookie:
 
 ```
@@ -253,7 +260,8 @@ obramat store stock 25064668 --all
 
 Out of scope (read-only, ADR 0002). For the record: the add-to-cart form posts `reflm`, `offerId`,
 `quantity` and `contextCode` to the cart module; store selection is the cookie above; the account login
-was not explored.
+was not explored. Importing a browser session (`auth`) is not an account login: it replays the visitor's
+own cookies only to get past bot protection.
 
 ## 6. Gotchas
 
