@@ -71,7 +71,7 @@ npx obramat-cli --version
 npx obramat-cli search "tablero osb" --format pretty
 ```
 
-the npm wrapper downloads the matching release binary during install. it is not published yet: publishing waits for an `NPM_TOKEN` secret, and the package version always matches the release tag.
+the npm wrapper downloads the matching release binary during install. publishing runs from the `npm-publish.yml` workflow on a `v*` tag via npm Trusted Publishing (OIDC: no token stored anywhere, provenance automatic). one npm-side step remains: on npmjs.com, once the package exists, open it → Settings → Trusted Publishers → add a GitHub Actions publisher with owner `n0nuser`, repository `obramat-cli`, workflow `npm-publish.yml`, and an empty environment. until that exists the workflow fails, which is separate from the binary release.
 
 ### release binaries
 
@@ -90,7 +90,11 @@ git clone https://github.com/n0nuser/obramat-cli && cd obramat-cli
 make build     # bin/obramat
 ```
 
-homebrew, scoop and aur are planned; each needs somewhere to publish (a tap repo, a scoop bucket, an aur key), so they are not in the release config yet.
+homebrew, scoop and aur are written but commented out in `.goreleaser.yaml`; they stay disabled until the account side exists, because a block whose repository or secret is missing breaks the release. their exact prerequisites:
+
+- **homebrew**: a `homebrew-tap` repository, plus a `HOMEBREW_TAP_GITHUB_TOKEN` secret with write access to it.
+- **scoop**: a `scoop-bucket` repository, plus a `SCOOP_BUCKET_GITHUB_TOKEN` secret with write access to it.
+- **aur**: an AUR account, plus an `AUR_SSH_PRIVATE_KEY` secret whose public key is registered on it.
 
 ## why
 

@@ -18,10 +18,17 @@ catalogue, see a product's price and stock at each store, and get told when eith
 - Releases are goreleaser archives named `obramat_<version>_<os>_<arch>.tar.gz` (`.zip` on Windows),
   with `checksums.txt`. `scripts/install.sh` is the `curl | sh` installer; it downloads, verifies the
   checksum, and only then installs.
-- `npm/` is the `npx` wrapper. It is **not published**: publishing waits for an `NPM_TOKEN` secret, and
-  the package version must equal the release tag so the postinstall can find the archive.
-- Homebrew, Scoop and AUR are planned but not configured. They need a tap repo, a scoop bucket and an
-  AUR key; do not add them to `.goreleaser.yaml` before those exist, or `release.yml` breaks.
+- `npm/` is the `npx` wrapper. Publishing runs in `.github/workflows/npm-publish.yml` on a `v*` tag
+  with npm Trusted Publishing (OIDC): no npm token exists in the repo, and provenance is automatic. The
+  workflow overwrites the package version from the tag. One npm-side step is left: on npmjs.com, open the
+  package → Settings → Trusted Publishers → add a GitHub Actions publisher with owner `n0nuser`,
+  repository `obramat-cli`, workflow `npm-publish.yml`, environment empty. Until then that workflow fails
+  on its own; it never touches `release.yml`.
+- Homebrew, Scoop and AUR are written but commented out in `.goreleaser.yaml`, so `release.yml` stays
+  green. To enable them: **homebrew** needs a `homebrew-tap` repository and a `HOMEBREW_TAP_GITHUB_TOKEN`
+  secret with write access; **scoop** needs a `scoop-bucket` repository and a `SCOOP_BUCKET_GITHUB_TOKEN`
+  secret with write access; **aur** needs an AUR account and an `AUR_SSH_PRIVATE_KEY` secret whose public
+  key is registered on it.
 
 ## Language
 
