@@ -451,3 +451,34 @@ func (s *Session) Summarize() Summary {
 
 // String never prints values.
 func (c Cookie) String() string { return fmt.Sprintf("%s=<redacted>; domain=%s", c.Name, c.Domain) }
+
+// StoreFromCookie reads the store a browser visitor had selected out of a
+// customer_context cookie value (ADR 0001). It returns false when the value is
+// not that cookie or carries no store.
+func StoreFromCookie(v string) (StoreRef, bool) {
+	raw := v
+	if unescaped, err := url.QueryUnescape(v); err == nil {
+		raw = unescaped
+	}
+	var c struct {
+		MainStore  string `json:"main_store"`
+		StoresName []struct {
+			ID   string `json:"id"`
+			Name string `json:"name"`
+		} `json:"stores_name"`
+	}
+	if json.Unmarshal([]byte(raw), &c) != nil {
+		return StoreRef{}, false
+	}
+	id, err := strconv.Atoi(strings.TrimSpace(c.MainStore))
+	if err != nil || id <= 0 {
+		return StoreRef{}, false
+	}
+	ref := StoreRef{ID: id}
+	for _, s := range c.StoresName {
+		if s.ID == c.MainStore {
+			ref.Name = strings.TrimSpace(s.Name)
+		}
+	}
+	return ref, true
+}

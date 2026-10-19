@@ -26,6 +26,7 @@ type Paths struct {
 	StateDB     string // $XDG_DATA_HOME/obramat-cli/state.db: watches, seen products, events
 	CacheDir    string // $XDG_CACHE_HOME/obramat-cli: store list cache, update check
 	StateDir    string // $XDG_STATE_HOME/obramat-cli: scheduler logs
+	ChromeDir   string // $XDG_DATA_HOME/obramat-cli/chrome: the profile `auth harvest` keeps
 }
 
 func DefaultPaths() Paths {
@@ -38,6 +39,7 @@ func DefaultPaths() Paths {
 		StateDB:     filepath.Join(xdg.DataHome, appDir, "state.db"),
 		CacheDir:    filepath.Join(xdg.CacheHome, appDir),
 		StateDir:    filepath.Join(xdg.StateHome, appDir),
+		ChromeDir:   filepath.Join(xdg.DataHome, appDir, "chrome"),
 	}
 	if v := os.Getenv("OBRAMAT_CONFIG"); v != "" {
 		p.ConfigFile = v

@@ -138,9 +138,23 @@ func TestOwnDomain(t *testing.T) {
 	}
 }
 
+// The store a harvested session had selected comes out of its
+// customer_context cookie, URL-encoded, with the name the site wrote.
+func TestStoreFromCookie(t *testing.T) {
+	value := url.QueryEscape(`{"auto_context":"false","city":"Santa Marta de Tormes","main_store":"22","stores_name":[{"name":"Obramat Salamanca","id":"22"}],"white_zone":"true"}`)
+	ref, ok := StoreFromCookie(value)
+	if !ok || ref.ID != 22 || ref.Name != "Obramat Salamanca" {
+		t.Fatalf("%+v %v", ref, ok)
+	}
+	for _, bad := range []string{"", "not json", `{"main_store":"0"}`, `{"auto_context":"false"}`} {
+		if _, ok := StoreFromCookie(bad); ok {
+			t.Errorf("%q parsed as a store", bad)
+		}
+	}
+}
+
 func TestSessionHeaderMatching(t *testing.T) {
-	s := &Session{Cookies: []Cookie{
-		{Name: "a", Value: "1", Domain: ".obramat.es", Path: "/"},
+	s := &Session{Cookies: []Cookie{{Name: "a", Value: "1", Domain: ".obramat.es", Path: "/"},
 		{Name: "b", Value: "2", Domain: "www.obramat.es", Path: "/productos"},
 		{Name: "c", Value: "3", Domain: ".obramat.es", Expires: time.Now().Add(-time.Hour)},
 		{Name: "d", Value: "4", Domain: ".obramat.es", Secure: true},
