@@ -107,7 +107,10 @@ The page embeds the listing state:
 `codes` is the ranking. `stockAndDeliveryFilters` carries the site's stock toggle and is populated only
 when a store is in context: `{"type":"toggle","code":"availability","label":"En stock en Almacén",
 "value":"inStockInStore","applied":false,"total":211}`. It travels in the `filters` parameter like any
-other facet (`{"availability":"inStockInStore"}`) and is what `--in-stock` sends.
+other facet (`{"availability":"inStockInStore"}`) and is what `--in-stock` sends. Confirmed live
+2026-10-19 with an imported browser session at store 22: the request answers 200, the toggle comes back
+`applied:true`, `number` is the store's in-stock count (4 for "tablero osb") and every card has stock
+(`search_tablero-osb_store22_in-stock.html.gz`).
 
 **Product cards** follow, one `<li class="product-thumbnail product-thumbnail-item …" data-reflm="REF">`
 each. What the CLI reads from a card:
