@@ -26,6 +26,20 @@ ID  STORE                STOCK  DISTANCE  SITE SAYS
 18  Obramat Alcorcón     198    22.4 km   198 en Stock
 ```
 
+## for ai agents
+
+two ways to wire `obramat` into an agent, both copy-paste:
+
+```bash
+# register the read commands as an MCP server (claude-code, codex or cursor)
+obramat mcp install claude-code
+
+# or read the embedded usage notes into the context
+obramat skills get obramat-usage
+```
+
+the mcp server exposes `search`, `product_show`, `store_stock`, `store_list`, `store_near`, `category_list` and `watch_check`; each tool returns exactly what the matching command prints, json by default.
+
 ## why
 
 buying materials for a job means knowing which warehouse has forty boards of the right thickness before you drive there, and what they cost at that warehouse, because prices differ between stores. the site answers that one product and one store at a time, behind a store-picker drawer. this cli answers it for a product across every store at once, for a whole search at your store, and keeps answering on a timer so you hear when the boards are back. json output means scripts, agents and shell pipelines all read the same thing.
@@ -169,14 +183,6 @@ type = "exec"
 command = ["~/bin/on-obramat-event"]   # event json on stdin
 ```
 
-## agents
-
-```bash
-obramat mcp install claude-code    # or codex, cursor
-obramat skills get obramat-usage
-```
-the mcp server exposes the read commands as tools (`search`, `product_show`, `store_stock`, `store_list`, `store_near`, `category_list`, `watch_check`). each tool returns exactly what the command prints.
-
 ## exit codes
 
 `0` ok, `1` generic, `2` usage, `3` `auth status --check` with no browser session, `4` not found, `5` blocked by the site's bot protection or rate limited (the cli then stays away from the site for 10 minutes), `6` network or site down, `7` the site changed shape (stderr carries a prefilled issue link), `130` interrupted.
@@ -188,6 +194,16 @@ git clone https://github.com/n0nuser/obramat-cli && cd obramat-cli
 make build     # bin/obramat
 make check     # vet, staticcheck, tests, gofmt
 ```
+
+### live smoke test
+
+`go test` never touches the network. once you have a browser session (`obramat auth harvest`), one guarded smoke test checks the real site:
+
+```bash
+OBRAMAT_LIVE_TEST=1 go test ./internal/api -run TestLiveSearch -v
+```
+
+it skips without `OBRAMAT_LIVE_TEST=1`, and skips with a message when no stored session exists.
 
 ## documentation
 
