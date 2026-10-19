@@ -19,8 +19,14 @@ catalogue, see a product's price and stock at each store, and get told when eith
 
 **Session**:
 The user's own browser cookies (and user agent) that the CLI replays to get past bot protection, stored
-0600 on the machine. Imported with `obramat auth login`. Not an account and not a login.
+0600 on the machine. Imported with `obramat auth login`, or read from a real browser with
+`obramat auth harvest`. Not an account and not a login.
 _Avoid_: credentials, token, profile, cookie jar (except `OBRAMAT_COOKIEJAR`)
+
+**Harvest**:
+Reading the live session out of a real Chrome window over the DevTools protocol, instead of importing an
+export by hand.
+_Avoid_: scrape, capture (the fixture captures are a different thing)
 
 ### Catalogue
 

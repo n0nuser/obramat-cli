@@ -17,6 +17,39 @@ user agent) over a Chrome-like TLS handshake. No password is ever asked for,
 and an account is not needed: a guest session with a store selected is
 enough.
 
+### `obramat auth harvest`
+
+Read the session out of a real Chrome window
+
+```bash
+obramat auth harvest [flags]
+```
+
+Open obramat.es in a real Chrome and read the session it earns, instead of
+exporting cookies by hand.
+
+The browser opens headed so you can clear any DataDome check it shows; the
+window stays open while the command waits. If a Chrome debug endpoint is
+already running (--browser-url, OBRAMAT_CHROME_URL, or the default
+http://localhost:9222), the command attaches to it instead of launching.
+
+A launched browser keeps its profile under the data directory, so the session
+survives across runs. The harvested cookies and the browser's own user agent
+are stored 0600 exactly as `auth login` stores an export.
+
+```bash
+obramat auth harvest
+obramat auth harvest --chrome /usr/bin/chromium --timeout 2m
+obramat auth harvest --browser-url http://localhost:9222
+```
+
+| Flag | Type | Default | Description |
+| --- | --- | --- | --- |
+| `--browser-url` | string | - | attach to this Chrome DevTools endpoint instead of launching (env OBRAMAT_CHROME_URL; default: probe http://localhost:9222) |
+| `--chrome` | string | - | Chrome or Chromium binary (env OBRAMAT_CHROME) |
+| `--timeout` | duration | `5m0s` | how long to wait for the challenge to clear |
+| `--user-agent` | string | - | override the user agent (default: the browser's own) |
+
 ### `obramat auth login`
 
 Import obramat.es cookies or a HAR from your browser

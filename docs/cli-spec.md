@@ -29,7 +29,7 @@ category   list
 store      list | near | show STORE | stock PRODUCT
 watch      add (search|product) | list | remove | check | run | events | service (install|uninstall|status)
 sink       list | test
-auth       login | status | logout
+auth       login | harvest | status | logout
 mcp        (no verb: serves) | install claude-code|codex|cursor
 config     path | list | get | set
 doctor
@@ -181,6 +181,13 @@ are involved.
   browser's user agent and `Sec-CH-UA*` hints. The session is stored 0600 at
   `$XDG_CONFIG_HOME/obramat-cli/session.json`; `login` then asks the storefront whether it works unless
   `--no-check`.
+- `auth harvest [--browser-url URL] [--chrome PATH] [--user-agent UA] [--timeout D]`: read the session
+  straight out of a real Chrome, so no export is needed. The browser opens headed (clear any DataDome
+  check by hand) with a persistent profile under `$XDG_DATA_HOME/obramat-cli/chrome`, and the command
+  polls up to `--timeout` (default 5m) until the challenge is clear, then reads the cookies and
+  `navigator.userAgent` over CDP. If a DevTools endpoint is already up (`--browser-url`,
+  `OBRAMAT_CHROME_URL`, or the default `http://localhost:9222`), it attaches instead of launching.
+  `--chrome`/`OBRAMAT_CHROME` name the binary. It stores the result exactly as `login` does.
 - `auth status [--check]`: where the session comes from and what it carries (cookie names only, never
   values). `--check` makes one request.
 - `auth logout`: forget the stored session. The browser is not touched.
@@ -275,6 +282,7 @@ back-to-back `--all` sweeps at 400 ms got a 403 that was still in place 45 s lat
 |---|---|---|
 | config | `$XDG_CONFIG_HOME/obramat-cli/config.toml` (or `OBRAMAT_CONFIG`) | 0600 |
 | browser session | `$XDG_CONFIG_HOME/obramat-cli/session.json` (or `OBRAMAT_COOKIEJAR=FILE` at runtime) | 0600 |
+| harvest Chrome profile | `$XDG_DATA_HOME/obramat-cli/chrome` | |
 | watch state | `$XDG_DATA_HOME/obramat-cli/state.db` | 0600 |
 | store list cache, update stamp | `$XDG_CACHE_HOME/obramat-cli/` | 0600 |
 | scheduler log | `$XDG_STATE_HOME/obramat-cli/obramat-watch.log` | |
@@ -286,11 +294,12 @@ env > config.
 ## 11. Stack
 
 cobra + pflag, `net/http`, `refraction-networking/utls` (the Chrome handshake),
-`pelletier/go-toml/v2`, `adrg/xdg`, `modernc.org/sqlite`, `toon-go`. No MCP SDK, no HTML parser: the
-pages are read through their JSON islands and the site's own class names. Tests use stdlib `testing`,
-`httptest` serving captured responses from `internal/api/testdata/` and hand-written
-`*.synthetic.*` cookie fixtures, and a binary-level test with an isolated XDG home. No live calls in
-tests.
+`chromedp/chromedp` (the harvest's DevTools protocol), `pelletier/go-toml/v2`, `adrg/xdg`,
+`modernc.org/sqlite`, `toon-go`. No MCP SDK, no HTML parser: the pages are read through their JSON
+islands and the site's own class names. No browser is bundled: the harvest drives the system Chrome.
+Tests use stdlib `testing`, `httptest` serving captured responses from `internal/api/testdata/` and
+hand-written `*.synthetic.*` cookie fixtures, and a binary-level test with an isolated XDG home. No
+test launches a browser or calls obramat.es.
 
 ## 12. Layout
 
@@ -298,7 +307,8 @@ tests.
 cmd/obramat/       entrypoint; under cmd/ so `go install .../cmd/obramat` names the binary obramat
 cmd/docsgen/       writes docs-site/content/docs/reference from the cobra tree
 internal/api/      everything that knows obramat.es: client, transport (Chrome TLS), session, listing, product, stores, categories
-internal/cli/      one file per noun (auth.go is the session); skills/ holds the embedded notes
+internal/cli/      one file per noun (auth.go and harvest.go are the session); skills/ holds the embedded notes
+internal/harvest/  reads a live session out of Chrome over CDP (integration only)
 internal/state/    SQLite watch state
 internal/watch/    one check: fetch, diff, events
 internal/sink/     ntfy, webhook, exec

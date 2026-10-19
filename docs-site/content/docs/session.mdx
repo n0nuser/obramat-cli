@@ -10,7 +10,22 @@ replaying your own session, over a Chrome-like TLS handshake.
 This is not a login. No password is ever asked for, and no account is needed — a guest session with a
 store selected is enough.
 
-## Import a session
+## Harvest it from Chrome
+
+The easiest way: let the CLI open a real Chrome window and read the session out of it.
+
+```bash
+obramat auth harvest
+```
+
+The window opens headed so you can clear any check by hand. The CLI waits (up to `--timeout`, 5
+minutes by default) until the challenge is gone, then reads the cookies and the browser's own user
+agent. A persistent profile under `~/.local/share/obramat-cli/chrome` keeps the session across runs.
+If Chrome is already running with a DevTools port, `--browser-url` (or `OBRAMAT_CHROME_URL`, or the
+default `http://localhost:9222`) attaches to it instead of launching. `--chrome`/`OBRAMAT_CHROME` name
+the browser binary.
+
+## Or import an export
 
 1. Open obramat.es in Chrome and choose your store.
 2. Export the cookies with a cookie-export extension (JSON or `cookies.txt`), or save a HAR from

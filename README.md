@@ -60,14 +60,22 @@ obramat doctor --format pretty
 
 ### get through bot protection
 
-obramat.es sits behind DataDome, which answers scripts with a challenge page. `obramat` gets through by replaying your own browser's session. open obramat.es in Chrome, export the cookies with a cookie-export extension (or save a HAR from devtools > network with "allow to generate HAR with sensitive data"), and pass the file:
+obramat.es sits behind DataDome, which answers scripts with a challenge page. `obramat` gets through by replaying your own browser's session. the easy way is to let the cli drive a real Chrome window:
+
+```bash
+obramat auth harvest            # opens obramat.es, clear any captcha by hand
+```
+
+the window opens headed so you can solve the check; the cli waits (up to `--timeout`, 5 minutes by default) and reads the session out over the devtools protocol. a persistent profile under `~/.local/share/obramat-cli/chrome` keeps the session across runs. if you already have Chrome running with a devtools port, `--browser-url` (or `OBRAMAT_CHROME_URL`, or the default `http://localhost:9222`) attaches to it instead of launching. `--chrome`/`OBRAMAT_CHROME` name the binary.
+
+or import an export by hand:
 
 ```bash
 obramat auth login --cookies ~/Downloads/obramat-cookies.json
 obramat auth status --check
 ```
 
-the session is stored 0600 and no password is ever asked for. a guest session with a store selected is enough. when the site stops trusting it, reload the site in the same browser and import again. `OBRAMAT_COOKIEJAR=FILE` uses an export without storing it (for CI). `obramat auth logout` forgets it.
+either way the session is stored 0600 and no password is ever asked for; a guest session with a store selected is enough. when the site stops trusting it, harvest again or reload the site in the same browser and import. `OBRAMAT_COOKIEJAR=FILE` uses an export without storing it (for CI). `obramat auth logout` forgets the stored session.
 
 ### pick your store
 
@@ -103,7 +111,7 @@ interactive commands check for a new release at most once a day and ask before u
 | `watch check / run / events / list / remove` | one-shot check, foreground loop, history |
 | `watch service install / uninstall / status` | systemd user timer or launchd agent running `watch check` |
 | `sink list / test` | notification targets from config |
-| `auth login / status / logout` | import, inspect or forget the browser session the site's bot protection needs |
+| `auth harvest / login / status / logout` | read, import, inspect or forget the browser session the site's bot protection needs |
 | `mcp / mcp install` | serve the read commands to an agent harness |
 | `config path / list / get / set` | config.toml |
 | `doctor` | checks config, sinks, the site, the store, the watch state |
@@ -165,7 +173,6 @@ command = ["~/bin/on-obramat-event"]   # event json on stdin
 obramat mcp install claude-code    # or codex, cursor
 obramat skills get obramat-usage
 ```
-
 the mcp server exposes the read commands as tools (`search`, `product_show`, `store_stock`, `store_list`, `store_near`, `category_list`, `watch_check`). each tool returns exactly what the command prints.
 
 ## exit codes

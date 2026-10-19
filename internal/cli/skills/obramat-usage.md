@@ -8,10 +8,13 @@ an envelope with `code`, `category` and `retryable`.
 ## Bot protection
 
 obramat.es is behind DataDome and refuses scripts. Replay the user's own browser session:
-`obramat auth login --cookies FILE` (or `--har FILE`, or `--cookies-stdin`). A HAR also
-carries the browser's user agent. `obramat auth status --check` asks the site whether it still
-works; `obramat auth logout` forgets it. Without a session, commands that need the storefront
-exit 3. Sessions expire: re-import when the site starts challenging (exit 5).
+`obramat auth harvest` opens a real Chrome window, waits while the user clears any captcha, and
+reads the session out of it (use `--browser-url` to attach to a Chrome already running with a
+devtools port). Without a display, import an export instead: `obramat auth login --cookies FILE`
+(or `--har FILE`, or `--cookies-stdin`); a HAR also carries the browser's user agent.
+`obramat auth status --check` asks the site whether the session still works; `obramat auth logout`
+forgets it. Without a session, commands that need the storefront exit 3. Sessions expire: harvest or
+re-import when the site starts challenging (exit 5).
 
 ## Store context
 

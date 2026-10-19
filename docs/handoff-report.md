@@ -11,7 +11,7 @@ State of the tree: every command in `docs/cli-spec.md` exists and works against 
 `go build ./... && go test ./... && go vet ./...`, staticcheck, gofmt, the docs-site typecheck and
 build, and `make docs-check` are clean.
 
-The last two steps are done and now confirmed live:
+The last three steps are done and now confirmed live:
 
 1. **Getting past DataDome.** Requests go over a Chrome TLS hello (`utls`) and the CLI can replay the
    user's own browser session (`auth login`). With a fresh session the storefront answers (see
@@ -19,46 +19,56 @@ The last two steps are done and now confirmed live:
 2. **`--in-stock` uses the site's filter.** The live request sent
    `filters={"availability":"inStockInStore"}` and the site returned the store's in-stock products, 200
    rather than the challenge page. The page was captured as a fixture.
+3. **`auth harvest` reads the session out of a real Chrome**, so the manual export is no longer needed
+   for most users. Manual `auth login --cookies` stays for scripts, CI and machines without a display.
 
 ## Commands and files
 
-Commands: `obramat auth login|status|logout`, plus the existing catalogue, store, watch, sink, mcp,
-config, doctor, skills and update commands.
+Commands: `obramat auth harvest|login|status|logout`, plus the existing catalogue, store, watch, sink,
+mcp, config, doctor, skills and update commands.
 
 Key files: `internal/api/transport.go` (Chrome TLS), `internal/api/session.go` (session, export parsers,
-cookie jar), `internal/config/session.go` (0600 storage, `OBRAMAT_COOKIEJAR`), `internal/cli/auth.go`.
-The `--in-stock` filter is in `internal/api/listing.go` (`ListParams.InStock`) and
-`internal/cli/search.go`.
+cookie jar, `StoreFromCookie`), `internal/config/session.go` (0600 storage, `OBRAMAT_COOKIEJAR`),
+`internal/cli/auth.go` and `internal/cli/harvest.go` (the `auth` noun),
+`internal/harvest/` (the Chrome/CDP side, integration only). The `--in-stock` filter is in
+`internal/api/listing.go` (`ListParams.InStock`) and `internal/cli/search.go`.
 
 ## Dependency
 
-`github.com/refraction-networking/utls v1.8.2` (`HelloChrome_Auto`, Chrome 133). It is the only
-non-stdlib piece of the HTTP stack; the updater still uses plain `net/http`.
+`github.com/refraction-networking/utls v1.8.2` (`HelloChrome_Auto`, Chrome 133) for the TLS hello, and
+`github.com/chromedp/chromedp v0.21.0` for the harvest's DevTools protocol. No browser is bundled or
+downloaded: the harvest drives the system Chrome/Chromium. The updater still uses plain `net/http`.
 
 ## Tests
 
-67 test functions. New since the start of this work: the export parsers over four synthetic
+82 test functions. New since the start of this work: the export parsers over four synthetic
 cookie/HAR fixtures, cookie host/path/expiry matching, that the `datadome` cookie and session user agent
 both go out and a rotated cookie is absorbed, that `--store` beats a session `customer_context`, the
 Chrome handshake negotiating HTTP/1.1 while still verifying certificates, 0600 storage and the
-env-never-saved rule, the CLI-level `auth` flow, and the live `--in-stock` page
-(`api.TestInStockListing`) beside the encoding (`api.TestInStockFilterParam`). No committed test talks
-to obramat.es.
+env-never-saved rule, the CLI-level `auth` flow, the live `--in-stock` page (`api.TestInStockListing`)
+beside the encoding (`api.TestInStockFilterParam`), and for the harvest: the cookie-to-export mapping
+through `api.ParseExport`, the browser lookup and override, the DevTools reachability probe, and the
+`auth harvest` command surface. No committed test launches a browser or talks to obramat.es.
 
 ## Open caveats
 
-1. **Sessions expire.** The replayed session is the user's own; when DataDome stops trusting it, every
-   site command exits 5 until it is re-imported (`obramat auth login`). The 10-minute local pause after
-   a block still applies, and `auth status --check` tells a working session from a challenged one.
-2. **robots.txt** disallows `/search?q=*`, the filter and sort parameters, `/lazy/` and `/rest/`. The
+1. **`auth harvest` needs a display** for a launched browser (it is headed on purpose, so a human can
+   clear the challenge). On a headless machine, attach to a running Chrome with `--browser-url`, or use
+   `auth login --cookies` / `OBRAMAT_COOKIEJAR`.
+2. **Sessions expire.** The replayed session is the user's own; when DataDome stops trusting it, run
+   `auth harvest` again or re-import. Every site command exits 5 until then. The 10-minute local pause
+   after a block still applies, and `auth status --check` tells a working session from a challenged one.
+3. **robots.txt** disallows `/search?q=*`, the filter and sort parameters, `/lazy/` and `/rest/`. The
    CLI fetches what one browser page view fetches, on a person's request; this is worth knowing before
    anything bulk is built on it.
-3. **No store, no stock.** Without a store in context the site shows a default web price that for some
+4. **No store, no stock.** Without a store in context the site shows a default web price that for some
    products is a Canary Islands (IGIC) price, and no stock numbers.
-4. The `L`-severity notes in `docs/review-2026-10-19.md` stand (brand case, category accents,
+5. The `L`-severity notes in `docs/review-2026-10-19.md` stand (brand case, category accents,
    quantity-price tiers).
 
 R15 (the live `--in-stock` round trip) is closed; the details are in `docs/review-2026-10-19.md`.
+Decisions: [ADR 0004](adr/0004-browser-session-and-chrome-tls.md) and
+[ADR 0005](adr/0005-browser-session-harvest.md).
 
 ## Literal output
 
@@ -81,6 +91,41 @@ REF       PRICE    UNIT    STOCK  PRODUCT                                     UR
 25094563  6.95 €   Unidad  257    TABLERO OSB3 165X61X0,9CM                   https://www.obramat.es/productos/tablero-osb3-165x61x0-9cm-25094563.html
 4 of 4 products, page 1/1, store Obramat Salamanca (22)
 ```
+
+### `obramat auth harvest --help`
+
+```
+Open obramat.es in a real Chrome and read the session it earns, instead of
+exporting cookies by hand.
+
+The browser opens headed so you can clear any DataDome check it shows; the
+window stays open while the command waits. If a Chrome debug endpoint is
+already running (--browser-url, OBRAMAT_CHROME_URL, or the default
+http://localhost:9222), the command attaches to it instead of launching.
+
+A launched browser keeps its profile under the data directory, so the session
+survives across runs. The harvested cookies and the browser's own user agent
+are stored 0600 exactly as `auth login` stores an export.
+
+Examples:
+  obramat auth harvest
+  obramat auth harvest --chrome /usr/bin/chromium --timeout 2m
+  obramat auth harvest --browser-url http://localhost:9222
+
+Usage:
+  obramat auth harvest [flags]
+
+Flags:
+      --browser-url string   attach to this Chrome DevTools endpoint instead of launching (env OBRAMAT_CHROME_URL; default: probe http://localhost:9222)
+      --chrome string        Chrome or Chromium binary (env OBRAMAT_CHROME)
+  -h, --help                 help for harvest
+      --timeout duration     how long to wait for the challenge to clear (default 5m0s)
+      --user-agent string    override the user agent (default: the browser's own)
+```
+
+`auth harvest` itself was not run here: it opens a visible browser window, so it is a
+human-in-the-loop step. Everything it does after reading the cookies goes through the same
+`api.ParseExport`/`config.SaveSession` path the outputs above exercised.
 
 ### `obramat --help`
 
