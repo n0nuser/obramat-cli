@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -73,7 +72,7 @@ func Summary(ev state.Event) (title, detail, link string) {
 			Quantity *int `json:"quantity"`
 		} `json:"stock"`
 	}
-	_ = json.Unmarshal(ev.Item, &p)
+	_ = json.Unmarshal(ev.Product, &p)
 	var ch struct{ From, To any }
 	_ = json.Unmarshal(ev.Change, &ch)
 	price := ""
@@ -85,21 +84,21 @@ func Summary(ev state.Event) (title, detail, link string) {
 		where = " at " + p.Store.Name
 	}
 	switch ev.Type {
-	case "product.new":
+	case state.ProductNew:
 		title, detail = "New: "+p.Title, price
-	case "product.price_changed":
+	case state.PriceChanged:
 		title, detail = "Price: "+p.Title, fmt.Sprintf("%v € -> %v €%s", ch.From, ch.To, where)
-	case "product.stock_changed":
+	case state.StockChanged:
 		title, detail = "Stock: "+p.Title, fmt.Sprintf("%v -> %v units%s", ch.From, ch.To, where)
-	case "product.out_of_stock":
+	case state.OutOfStock:
 		title, detail = "Out of stock: "+p.Title, strings.TrimPrefix(where, " at ")
-	case "product.back_in_stock":
+	case state.BackInStock:
 		title = "Back in stock: " + p.Title
 		detail = price + where
 		if p.Stock != nil && p.Stock.Quantity != nil {
 			detail = fmt.Sprintf("%d units%s, %s", *p.Stock.Quantity, where, price)
 		}
-	case "product.removed":
+	case state.ProductRemoved:
 		title = "Removed: " + p.Title
 	default:
 		title = ev.Type + ": " + p.Title
@@ -121,7 +120,7 @@ func ntfy(ctx context.Context, s config.SinkConfig, ev state.Event) error {
 		req.Header.Set("Click", link)
 	}
 	if s.TokenFile != "" {
-		tok, err := os.ReadFile(home(s.TokenFile))
+		tok, err := os.ReadFile(config.ExpandHome(s.TokenFile))
 		if err != nil {
 			return fmt.Errorf("ntfy token file: %w", err)
 		}
@@ -176,7 +175,7 @@ func run(ctx context.Context, s config.SinkConfig, ev state.Event) error {
 	defer cancel()
 	argv := make([]string, len(s.Command))
 	for i, a := range s.Command {
-		argv[i] = home(a)
+		argv[i] = config.ExpandHome(a)
 	}
 	cmd := exec.CommandContext(ctx, argv[0], argv[1:]...)
 	cmd.Stdin = bytes.NewReader(raw)
@@ -187,13 +186,4 @@ func run(ctx context.Context, s config.SinkConfig, ev state.Event) error {
 		return fmt.Errorf("%s: %w: %s", argv[0], err, strings.TrimSpace(stderr.String()))
 	}
 	return nil
-}
-
-func home(p string) string {
-	if rest, ok := strings.CutPrefix(p, "~/"); ok {
-		if h, err := os.UserHomeDir(); err == nil {
-			return filepath.Join(h, rest)
-		}
-	}
-	return p
 }

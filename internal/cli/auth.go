@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -139,13 +138,13 @@ Examples:
 func (a *App) readExport(cookies, har string, fromStdin bool, format string) ([]byte, string, error) {
 	switch {
 	case har != "":
-		raw, err := os.ReadFile(expandHome(har))
+		raw, err := os.ReadFile(config.ExpandHome(har))
 		if format == "auto" {
 			format = api.FormatHAR
 		}
 		return raw, format, err
 	case cookies != "":
-		raw, err := os.ReadFile(expandHome(cookies))
+		raw, err := os.ReadFile(config.ExpandHome(cookies))
 		return raw, format, err
 	case fromStdin:
 		raw, err := io.ReadAll(io.LimitReader(a.Stdin, 64<<20))
@@ -155,21 +154,12 @@ func (a *App) readExport(cookies, har string, fromStdin bool, format string) ([]
 	}
 	fmt.Fprint(a.Stderr, "path to an obramat.es cookie export or HAR: ")
 	line, _ := bufio.NewReader(a.Stdin).ReadString('\n')
-	path := expandHome(strings.Trim(strings.TrimSpace(line), `"'`))
+	path := config.ExpandHome(strings.Trim(strings.TrimSpace(line), `"'`))
 	if path == "" {
 		return nil, "", output.Usagef("no file given")
 	}
 	raw, err := os.ReadFile(path)
 	return raw, format, err
-}
-
-func expandHome(p string) string {
-	if rest, ok := strings.CutPrefix(p, "~/"); ok {
-		if home, err := os.UserHomeDir(); err == nil {
-			return filepath.Join(home, rest)
-		}
-	}
-	return p
 }
 
 // checkStorefront asks for the home page with the session. A challenge means

@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 // The site is server-rendered HTML with a few JSON islands. Pages are parsed
@@ -42,10 +43,17 @@ func number(s string) (float64, bool) {
 }
 
 // jsonIsland returns the body of <script type="application/json" id="ID">.
+// The pattern depends only on the id, so it is compiled once per id rather than
+// once per page: every page read asks for at least one island.
 func jsonIsland(page, id string) string {
-	re := regexp.MustCompile(`(?s)<script type="application/(?:ld\+)?json" id="` + regexp.QuoteMeta(id) + `">(.*?)</script>`)
-	return first(re, page)
+	re, ok := islandRes.Load(id)
+	if !ok {
+		re, _ = islandRes.LoadOrStore(id, regexp.MustCompile(`(?s)<script type="application/(?:ld\+)?json" id="`+regexp.QuoteMeta(id)+`">(.*?)</script>`))
+	}
+	return first(re.(*regexp.Regexp), page)
 }
+
+var islandRes sync.Map // id -> *regexp.Regexp
 
 // stripQuery drops ?width=... from image URLs so they point at the original.
 func stripQuery(u string) string {

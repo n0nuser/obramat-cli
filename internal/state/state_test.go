@@ -23,7 +23,7 @@ func TestCommitAndEvents(t *testing.T) {
 		t.Fatalf("duplicate: %v", err)
 	}
 	q, p := 5, 9.5
-	ev := Event{Type: "product.new", Watch: "a", At: time.Now(), Item: json.RawMessage(`{"ref":"1"}`)}
+	ev := Event{Type: "product.new", Watch: "a", At: time.Now(), Product: json.RawMessage(`{"ref":"1"}`)}
 	if err := db.CommitCheck(ctx, w.ID, []Seen{{Ref: "1", Title: "x", Price: &p, Quantity: &q, Available: true, Snapshot: json.RawMessage(`{}`)}}, nil, []Event{ev}); err != nil {
 		t.Fatal(err)
 	}

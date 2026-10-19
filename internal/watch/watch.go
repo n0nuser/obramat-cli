@@ -14,20 +14,10 @@ import (
 	"github.com/n0nuser/obramat-cli/internal/state"
 )
 
-// Event types.
-const (
-	ProductNew     = "product.new"           // a search lists a product it had not listed before
-	PriceChanged   = "product.price_changed" // change: {from, to}
-	StockChanged   = "product.stock_changed" // product watches only; change: {from, to}
-	OutOfStock     = "product.out_of_stock"  // the store had it and now does not
-	BackInStock    = "product.back_in_stock" // the store did not have it and now does
-	ProductRemoved = "product.removed"       // the product page is gone
-)
-
-// SearchTarget is a search or category listing, store included.
+// SearchTarget is a search or category listing, store included. The in-stock
+// filter travels inside Params, so there is only one copy of it.
 type SearchTarget struct {
-	Params  api.ListParams `json:"params"`
-	InStock bool           `json:"in_stock,omitempty"`
+	Params api.ListParams `json:"params"`
 }
 
 // ProductTarget is one product at one store (or at none: web price only).
@@ -86,14 +76,14 @@ func checkSearch(ctx context.Context, c *api.Client, w state.Watch, t SearchTarg
 			if pr.Title == "" {
 				continue // a card the site never rendered: nothing to compare
 			}
-			if t.InStock && (pr.Stock == nil || !pr.Stock.Available) {
+			if t.Params.InStock && (pr.Stock == nil || !pr.Stock.Available) {
 				continue
 			}
 			s := seenOf(pr)
 			prev, known := seen[pr.Ref]
 			switch {
 			case !known && !baseline:
-				res.Events = append(res.Events, event(w, ProductNew, pr, nil))
+				res.Events = append(res.Events, event(w, state.ProductNew, pr, nil))
 			case known:
 				// Quantities move with every sale; a search reports only
 				// price and in/out changes. Product watches report quantity.
@@ -118,7 +108,7 @@ func checkProduct(ctx context.Context, c *api.Client, w state.Watch, t ProductTa
 			if prev, ok := seen[t.Ref]; ok {
 				var last api.Product
 				_ = json.Unmarshal(prev.Snapshot, &last)
-				res.Events = append(res.Events, event(w, ProductRemoved, last, nil))
+				res.Events = append(res.Events, event(w, state.ProductRemoved, last, nil))
 				res.Removed = append(res.Removed, t.Ref)
 			}
 			return res, nil
@@ -130,7 +120,7 @@ func checkProduct(ctx context.Context, c *api.Client, w state.Watch, t ProductTa
 	if prev, ok := seen[pr.Ref]; ok {
 		res.Events = append(res.Events, diff(w, prev, s, pr, true)...)
 	} else if !baseline {
-		res.Events = append(res.Events, event(w, ProductNew, pr, nil))
+		res.Events = append(res.Events, event(w, state.ProductNew, pr, nil))
 	}
 	res.Upserts = append(res.Upserts, s)
 	return res, nil
@@ -154,25 +144,25 @@ func seenOf(p api.Product) state.Seen {
 func diff(w state.Watch, prev, cur state.Seen, p api.Product, quantities bool) []state.Event {
 	var out []state.Event
 	if prev.Price != nil && cur.Price != nil && *prev.Price != *cur.Price {
-		out = append(out, event(w, PriceChanged, p, change{*prev.Price, *cur.Price}))
+		out = append(out, event(w, state.PriceChanged, p, change{*prev.Price, *cur.Price}))
 	}
 	if p.Stock == nil {
 		return out // no store, no stock to compare
 	}
 	switch {
 	case prev.Available && !cur.Available:
-		out = append(out, event(w, OutOfStock, p, nil))
+		out = append(out, event(w, state.OutOfStock, p, nil))
 	case !prev.Available && cur.Available:
-		out = append(out, event(w, BackInStock, p, nil))
+		out = append(out, event(w, state.BackInStock, p, nil))
 	case quantities && prev.Quantity != nil && cur.Quantity != nil && *prev.Quantity != *cur.Quantity:
-		out = append(out, event(w, StockChanged, p, change{*prev.Quantity, *cur.Quantity}))
+		out = append(out, event(w, state.StockChanged, p, change{*prev.Quantity, *cur.Quantity}))
 	}
 	return out
 }
 
 func event(w state.Watch, typ string, p api.Product, ch any) state.Event {
 	ev := state.Event{Type: typ, Watch: w.Name, At: time.Now().UTC()}
-	ev.Item, _ = json.Marshal(p)
+	ev.Product, _ = json.Marshal(p)
 	if ch != nil {
 		ev.Change, _ = json.Marshal(ch)
 	}

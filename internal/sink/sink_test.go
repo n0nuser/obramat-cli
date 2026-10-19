@@ -28,7 +28,7 @@ func TestValidate(t *testing.T) {
 func TestExecGetsEventOnStdin(t *testing.T) {
 	out := filepath.Join(t.TempDir(), "ev.json")
 	item, _ := json.Marshal(map[string]any{"title": "OSB", "price": map[string]any{"amount": 28}})
-	ev := state.Event{Type: "product.price_changed", Watch: "osb", At: time.Now(), Item: item, Change: json.RawMessage(`{"from":30,"to":28}`)}
+	ev := state.Event{Type: "product.price_changed", Watch: "osb", At: time.Now(), Product: item, Change: json.RawMessage(`{"from":30,"to":28}`)}
 	s := config.SinkConfig{Type: "exec", Command: []string{"sh", "-c", `cat > "$0"; echo "$OBRAMAT_EVENT_TYPE" >> "$0"`, out}}
 	if err := Deliver(context.Background(), "x", s, ev); err != nil {
 		t.Fatal(err)

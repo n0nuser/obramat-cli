@@ -58,8 +58,6 @@ type Options struct {
 	// UserDataDir is where a fresh browser keeps its profile, and where the
 	// temp profile of a copy launch is created.
 	UserDataDir string
-	// UserAgent overrides the browser's own.
-	UserAgent string
 	// Timeout bounds the wait for the challenge to clear.
 	Timeout time.Duration
 }

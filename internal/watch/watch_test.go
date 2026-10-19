@@ -22,7 +22,7 @@ func TestDiffReportsPriceAndAvailability(t *testing.T) {
 	prev := state.Seen{Price: ptr(10.0), Quantity: ptr(5), Available: true}
 	cur := state.Seen{Price: ptr(12.0), Quantity: ptr(0), Available: false}
 	evs := diff(w, prev, cur, p, true)
-	if len(evs) != 2 || evs[0].Type != PriceChanged || evs[1].Type != OutOfStock {
+	if len(evs) != 2 || evs[0].Type != state.PriceChanged || evs[1].Type != state.OutOfStock {
 		t.Fatalf("%+v", evs)
 	}
 	var ch struct{ From, To float64 }
@@ -31,7 +31,7 @@ func TestDiffReportsPriceAndAvailability(t *testing.T) {
 		t.Fatalf("change %s", evs[0].Change)
 	}
 	back := diff(w, cur, prev, p, true)
-	if len(back) != 2 || back[1].Type != BackInStock {
+	if len(back) != 2 || back[1].Type != state.BackInStock {
 		t.Fatalf("%+v", back)
 	}
 }
@@ -45,7 +45,7 @@ func TestQuantityOnlyForProductWatches(t *testing.T) {
 	if evs := diff(w, prev, cur, p, false); len(evs) != 0 {
 		t.Fatalf("search watch reported %+v", evs)
 	}
-	if evs := diff(w, prev, cur, p, true); len(evs) != 1 || evs[0].Type != StockChanged {
+	if evs := diff(w, prev, cur, p, true); len(evs) != 1 || evs[0].Type != state.StockChanged {
 		t.Fatalf("product watch: %+v", evs)
 	}
 }

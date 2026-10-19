@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -229,7 +230,7 @@ func asStrings(key string, p Param, v any) ([]string, error) {
 		if !ok || s == "" {
 			return nil, bad("a non-empty string")
 		}
-		if len(p.Enum) > 0 && !contains(p.Enum, s) {
+		if len(p.Enum) > 0 && !slices.Contains(p.Enum, s) {
 			return nil, bad("one of " + strings.Join(p.Enum, ", "))
 		}
 		return []string{s}, nil
@@ -261,15 +262,6 @@ func asStrings(key string, p Param, v any) ([]string, error) {
 		return out, nil
 	}
 	return nil, bad(p.Type)
-}
-
-func contains(list []string, s string) bool {
-	for _, v := range list {
-		if v == s {
-			return true
-		}
-	}
-	return false
 }
 
 func str(desc, flag string) Param  { return Param{Type: "string", Description: desc, flag: flag} }

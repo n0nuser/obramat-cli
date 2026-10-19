@@ -75,7 +75,6 @@ Examples:
 				Chrome:      chromePath,
 				Profile:     resolveProfile(f.profile),
 				UserDataDir: a.Paths.ChromeDir,
-				UserAgent:   f.userAgent,
 				Timeout:     f.timeout,
 			}
 			if opts.BrowserURL == "" && harvest.DebugURLReachable(ctx, harvest.DefaultDebugURL, nil) {

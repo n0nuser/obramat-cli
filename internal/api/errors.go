@@ -29,11 +29,25 @@ var kindNames = map[Kind]string{
 func (k Kind) String() string { return kindNames[k] }
 
 // ExitCode is the process status for this kind (docs/cli-spec.md, exit codes).
+// Spelled out, so inserting a kind cannot silently renumber the others.
 func (k Kind) ExitCode() int {
-	if k == KindGeneric {
+	switch k {
+	case KindGeneric:
 		return 1
+	case KindUsage:
+		return 2
+	case KindAuth:
+		return 3
+	case KindNotFound:
+		return 4
+	case KindBlocked:
+		return 5
+	case KindNetwork:
+		return 6
+	case KindAPIChanged:
+		return 7
 	}
-	return int(k) + 1
+	return 1
 }
 
 // Error is what the api package returns for anything that is not a Go

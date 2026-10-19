@@ -57,6 +57,23 @@ func TestEnvSessionIsNeverSaved(t *testing.T) {
 	}
 }
 
+// ExpandHome is the one place a "~/" path is expanded; the sink and the
+// cookie import both go through it.
+func TestExpandHome(t *testing.T) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		t.Skip("no home directory")
+	}
+	if got := ExpandHome("~/bin/x"); got != filepath.Join(home, "bin", "x") {
+		t.Fatalf("ExpandHome(~/bin/x) = %q", got)
+	}
+	for _, p := range []string{"/abs/x", "rel/x", "~user/x", ""} {
+		if got := ExpandHome(p); got != p {
+			t.Errorf("ExpandHome(%q) = %q, want it unchanged", p, got)
+		}
+	}
+}
+
 func TestRemoveSession(t *testing.T) {
 	p := testPaths(t)
 	if removed, err := RemoveSession(p); err != nil || removed {

@@ -47,6 +47,16 @@ func DefaultPaths() Paths {
 	return p
 }
 
+// ExpandHome turns a leading "~/" into the user's home directory.
+func ExpandHome(p string) string {
+	if rest, ok := strings.CutPrefix(p, "~/"); ok {
+		if home, err := os.UserHomeDir(); err == nil {
+			return filepath.Join(home, rest)
+		}
+	}
+	return p
+}
+
 // SinkConfig is one place events go besides stdout. Type picks the fields:
 // ntfy uses URL+Topic(+TokenFile), webhook URL(+Template), exec Command.
 type SinkConfig struct {

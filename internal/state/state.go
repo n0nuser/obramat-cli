@@ -22,6 +22,17 @@ const (
 	KindProduct = "product"
 )
 
+// Event types. They are the wire names of the change stream and the keys a
+// sink switches on, so they live beside Event.
+const (
+	ProductNew     = "product.new"           // a search lists a product it had not listed before
+	PriceChanged   = "product.price_changed" // change: {from, to}
+	StockChanged   = "product.stock_changed" // product watches only; change: {from, to}
+	OutOfStock     = "product.out_of_stock"  // the store had it and now does not
+	BackInStock    = "product.back_in_stock" // the store did not have it and now does
+	ProductRemoved = "product.removed"       // the product page is gone
+)
+
 // Watch is a saved instruction to check one target. Target is kind-specific
 // JSON (search parameters, or a product reference), and always pins the
 // store, so changing the default store never makes a watch report changes.
@@ -50,11 +61,11 @@ type Seen struct {
 }
 
 type Event struct {
-	Type   string          `json:"type"`
-	Watch  string          `json:"watch"`
-	At     time.Time       `json:"at"`
-	Item   json.RawMessage `json:"product,omitempty"`
-	Change json.RawMessage `json:"change,omitempty"`
+	Type    string          `json:"type"`
+	Watch   string          `json:"watch"`
+	At      time.Time       `json:"at"`
+	Product json.RawMessage `json:"product,omitempty"`
+	Change  json.RawMessage `json:"change,omitempty"`
 }
 
 const schema = `
@@ -252,7 +263,7 @@ func (d *DB) CommitCheck(ctx context.Context, watchID int64, upserts []Seen, rem
 	}
 	for _, ev := range events {
 		if _, err := tx.ExecContext(ctx, `INSERT INTO events(watch_id,type,at,product,change) VALUES(?,?,?,?,?)`,
-			watchID, ev.Type, ev.At.UTC().Format(time.RFC3339Nano), nullable(ev.Item), nullable(ev.Change)); err != nil {
+			watchID, ev.Type, ev.At.UTC().Format(time.RFC3339Nano), nullable(ev.Product), nullable(ev.Change)); err != nil {
 			return err
 		}
 	}
@@ -290,7 +301,7 @@ func (d *DB) Events(ctx context.Context, name string, since time.Time, limit int
 		}
 		ev.At, _ = time.Parse(time.RFC3339Nano, at)
 		if item != "" {
-			ev.Item = json.RawMessage(item)
+			ev.Product = json.RawMessage(item)
 		}
 		if change != "" {
 			ev.Change = json.RawMessage(change)
