@@ -21,7 +21,7 @@ func main() {
 // `go install ...@vX.Y.Z`, then to "dev".
 func resolveVersion() string {
 	if version != "" {
-		return version
+		return strings.TrimPrefix(version, "v")
 	}
 	if info, ok := debug.ReadBuildInfo(); ok && info.Main.Version != "" && info.Main.Version != "(devel)" {
 		return strings.TrimPrefix(info.Main.Version, "v")
