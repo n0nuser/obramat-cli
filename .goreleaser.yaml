@@ -47,3 +47,49 @@ release:
     name: obramat-cli
   draft: false
   prerelease: auto
+
+# ---------------------------------------------------------------------------
+# Publishing beyond GitHub Releases is ready but disabled. Each block needs an
+# account resource or a secret that does not exist yet; enabling one whose
+# repository or secret is missing fails `release.yml`, so they stay commented.
+#
+# homebrew_casks: a `homebrew-tap` repository on the account, plus a
+# HOMEBREW_TAP_GITHUB_TOKEN secret with write access to it.
+#
+# homebrew_casks:
+#   - name: obramat
+#     repository:
+#       owner: n0nuser
+#       name: homebrew-tap
+#       token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+#     homepage: https://n0nuser.github.io/obramat-cli/
+#     description: Search obramat.es and check prices and stock per store
+#     binaries:
+#       - obramat
+#
+# scoops: a `scoop-bucket` repository, plus a SCOOP_BUCKET_GITHUB_TOKEN secret
+# with write access to it.
+#
+# scoops:
+#   - repository:
+#       owner: n0nuser
+#       name: scoop-bucket
+#       token: "{{ .Env.SCOOP_BUCKET_GITHUB_TOKEN }}"
+#     homepage: https://n0nuser.github.io/obramat-cli/
+#     description: Search obramat.es and check prices and stock per store
+#     license: MIT
+#
+# aurs: an AUR account, plus an AUR_SSH_PRIVATE_KEY secret whose public key is
+# registered on it.
+#
+# aurs:
+#   - name: obramat-bin
+#     homepage: https://n0nuser.github.io/obramat-cli/
+#     description: Search obramat.es and check prices and stock per store
+#     maintainers:
+#       - n0nuser
+#     license: MIT
+#     private_key: "{{ .Env.AUR_SSH_PRIVATE_KEY }}"
+#     git_url: ssh://aur@aur.archlinux.org/obramat-bin.git
+#     package: |-
+#       install -Dm755 "./obramat" "${pkgdir}/usr/bin/obramat"
