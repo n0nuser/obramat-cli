@@ -1,0 +1,5 @@
+# Netscape HTTP Cookie File
+# synthetic fixture
+.obramat.es	TRUE	/	TRUE	1823896471	datadome	SYNTHETIC_DD_VALUE
+#HttpOnly_www.obramat.es	FALSE	/	TRUE	0	customer_context	SYNTHETIC_STORE
+.example.com	TRUE	/	FALSE	0	other	must-not-import

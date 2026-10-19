@@ -5,6 +5,12 @@ dist/
 cookies.json
 .tmp-*
 
+# *.har and cookies.json are ignored because a real export carries live
+# cookies; only the hand-written fixtures are committed.
+!internal/api/testdata/*.synthetic.har
+!internal/api/testdata/*.synthetic.json
+!internal/api/testdata/*.synthetic.txt
+
 # docs-site build output and deps
 docs-site/node_modules/
 docs-site/.next/

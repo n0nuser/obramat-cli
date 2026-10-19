@@ -1,0 +1,8 @@
+{
+  "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36",
+  "cookies": [
+    {"name": "datadome", "value": "SYNTHETIC_DD_VALUE", "domain": ".obramat.es", "path": "/"},
+    {"name": "customer_context", "value": "SYNTHETIC_STORE", "domain": ".obramat.es", "path": "/"},
+    {"name": "other", "value": "must-not-import", "domain": ".example.com", "path": "/"}
+  ]
+}

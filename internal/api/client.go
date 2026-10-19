@@ -33,6 +33,9 @@ type Client struct {
 	HTTP *http.Client
 	Base string
 	UA   string
+	// Session is the imported browser session whose cookies and user agent
+	// are replayed (see session.go). Nil when there is none.
+	Session *Session
 	// Debug, when set, gets one line per request and per response.
 	Debug io.Writer
 	// Gap is the minimum time between two requests from this client. Sweeps
@@ -53,7 +56,9 @@ func New(version string) *Client {
 		base = strings.TrimRight(v, "/")
 	}
 	return &Client{
-		HTTP:     &http.Client{Timeout: 25 * time.Second},
+		// ChromeTransport presents a Chrome TLS hello: Go's own handshake
+		// beside a real browser session is the pair DataDome scores as a bot.
+		HTTP:     &http.Client{Transport: ChromeTransport(nil), Timeout: 25 * time.Second},
 		Base:     base,
 		UA:       browserUA + " obramat-cli/" + version,
 		Gap:      400 * time.Millisecond,
@@ -115,15 +120,18 @@ func (c *Client) get(ctx context.Context, r request) (*response, error) {
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("User-Agent", c.UA)
+	req.Header.Set("User-Agent", c.userAgent())
 	req.Header.Set("Accept-Language", "es-ES,es;q=0.9")
 	if r.json {
 		req.Header.Set("Accept", "application/json")
 	} else {
 		req.Header.Set("Accept", "text/html,application/xhtml+xml;q=0.9,*/*;q=0.8")
 	}
-	if r.store.ID > 0 {
-		req.Header.Set("Cookie", r.store.cookie())
+	for k, v := range c.clientHints() {
+		req.Header.Set(k, v)
+	}
+	if cookie := c.cookieHeader(req.URL, r.store); cookie != "" {
+		req.Header.Set("Cookie", cookie)
 	}
 
 	c.wait(ctx)
@@ -141,6 +149,9 @@ func (c *Client) get(ctx context.Context, r request) (*response, error) {
 		return nil, netError(r.endpoint, err)
 	}
 	c.debugf("< %d %s (%d bytes)", resp.StatusCode, resp.Request.URL, len(body))
+	// DataDome rotates its cookie on most responses; keep it for the next
+	// request and for the session the CLI writes back.
+	c.absorbCookies(req.URL, resp)
 
 	switch {
 	case isBlock(resp, body):
@@ -177,6 +188,72 @@ func netError(endpoint string, err error) *Error {
 		msg = "obramat.es did not answer in time"
 	}
 	return &Error{Kind: KindNetwork, Endpoint: endpoint, Retryable: true, Msg: msg}
+}
+
+// Reachable performs one GET of the site root and returns the classified
+// error, nil when the storefront answered. It is how `auth login --check` and
+// `auth status --check` tell a working session from a challenged one.
+func (c *Client) Reachable(ctx context.Context) error {
+	_, err := c.get(ctx, request{path: "/", endpoint: "GET /"})
+	return err
+}
+
+// userAgent is the session browser's own user agent when one was imported
+// (DataDome scores the pair together), the CLI's browser default otherwise.
+func (c *Client) userAgent() string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.Session != nil && c.Session.UserAgent != "" {
+		return c.Session.UserAgent
+	}
+	return c.UA
+}
+
+// cookieHeader is what the Cookie header carries: the store in context first,
+// then the imported session's cookies for this URL. The store the command
+// asked for wins: a session's own customer_context is dropped when one is set.
+func (c *Client) cookieHeader(u *url.URL, store StoreRef) string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	var parts []string
+	if store.ID > 0 {
+		parts = append(parts, store.cookie())
+	}
+	if c.Session != nil {
+		for _, ck := range c.Session.Jar().Cookies(u) {
+			if store.ID > 0 && ck.Name == "customer_context" {
+				continue
+			}
+			parts = append(parts, ck.Name+"="+ck.Value)
+		}
+	}
+	return strings.Join(parts, "; ")
+}
+
+// clientHints are the Sec-CH-UA* headers of the imported browser, when a HAR
+// carried them. Without a session the CLI adds none, rather than a mismatched
+// set: its default user agent names the CLI at the end.
+func (c *Client) clientHints() map[string]string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.Session != nil {
+		return c.Session.ClientHints
+	}
+	return nil
+}
+
+// absorbCookies applies a response's Set-Cookie headers to the session, so a
+// rotated DataDome cookie is sent by the next request and written back.
+func (c *Client) absorbCookies(u *url.URL, resp *http.Response) {
+	cookies := resp.Cookies()
+	if len(cookies) == 0 {
+		return
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.Session != nil {
+		c.Session.Jar().SetCookies(u, cookies)
+	}
 }
 
 func (c *Client) wait(ctx context.Context) {
