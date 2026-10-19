@@ -252,7 +252,27 @@ func (c *Client) List(ctx context.Context, p ListParams) (*Listing, error) {
 		}
 		l.Products = append(l.Products, pr)
 	}
+	l.fillStoreName()
 	return l, nil
+}
+
+// fillStoreName completes a store known only by its code: the cards name the
+// store in their stock line ("205 en stock en Obramat Leganés").
+func (l *Listing) fillStoreName() {
+	if l.Store == nil || (l.Store.Name != "" && l.Store.Name != "Obramat") {
+		return
+	}
+	for _, p := range l.Products {
+		if p.Store != nil && p.Store.Name != "" && p.Store.Name != "Obramat" {
+			l.Store.Name = p.Store.Name
+			break
+		}
+	}
+	for i := range l.Products {
+		if l.Products[i].Store != nil {
+			l.Products[i].Store.Name = l.Store.Name
+		}
+	}
 }
 
 // ssrData is the guidance-ssr-data island search and category pages carry.

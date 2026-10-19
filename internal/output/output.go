@@ -14,6 +14,7 @@ import (
 	"text/tabwriter"
 
 	"github.com/n0nuser/obramat-cli/internal/api"
+	toon "github.com/toon-format/toon-go"
 )
 
 type Format string
@@ -22,14 +23,15 @@ const (
 	JSON   Format = "json"
 	JSONL  Format = "jsonl"
 	Pretty Format = "pretty"
+	Toon   Format = "toon"
 )
 
 func ParseFormat(s string) (Format, error) {
 	switch f := Format(s); f {
-	case JSON, JSONL, Pretty:
+	case JSON, JSONL, Pretty, Toon:
 		return f, nil
 	}
-	return "", Usagef("--format must be json, jsonl or pretty, not %q", s)
+	return "", Usagef("--format must be json, jsonl, pretty or toon, not %q", s)
 }
 
 // Prettier is a result with its own human rendering. Anything else prints as
@@ -53,6 +55,23 @@ func (p Printer) Print(v any) error {
 			pr.Pretty(p.W, p.Color)
 			return nil
 		}
+	case Toon:
+		// Through JSON first, so toon keys are the json tags and the two
+		// formats name every field the same way.
+		raw, err := json.Marshal(v)
+		if err != nil {
+			return err
+		}
+		var generic any
+		if err := json.Unmarshal(raw, &generic); err != nil {
+			return err
+		}
+		out, err := toon.Marshal(generic)
+		if err != nil {
+			return err
+		}
+		_, err = fmt.Fprintln(p.W, string(out))
+		return err
 	case JSONL:
 		raw, err := json.Marshal(v)
 		if err != nil {

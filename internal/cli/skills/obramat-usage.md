@@ -1,0 +1,60 @@
+# obramat usage notes
+
+`obramat` reads obramat.es: products, prices, stores and stock per store. It is read-only
+and needs no account. Output is JSON on stdout; `--format pretty` for people, `jsonl` for
+streams, `toon` for compact model context. Errors go to stderr; `--error-format json` gives
+an envelope with `code`, `category` and `retryable`.
+
+## Store context
+
+Prices and stock belong to a store. Pass `--store` (code, slug or part of the name),
+set `OBRAMAT_STORE`, or `obramat config set store ID`. Without a store you get the site's
+default web price (some products show a Canary Islands IGIC price) and no stock.
+
+```
+obramat store list                       # codes, names, cities (cached a week)
+obramat store near --lat 40.42 --lng -3.70
+```
+
+## Search and browse
+
+```
+obramat search "tablero osb" --store 4
+obramat search cemento --brand WEBER --min-price 5 --max-price 20 --sort price_asc
+obramat search filters cemento           # facet codes for --filter CODE=VALUE
+obramat search --category /madera/tableros/tableros-y-tablas-de-madera/ --in-stock --store 4
+obramat category list --parent /madera/
+```
+
+`{"query","category","store","page","pages","total","sort","products":[{ref,title,url,image,brand,price:{amount,amount_ex_vat,tax,unit,currency,per_measure},store,stock:{quantity,available,label},badges,delivery}]}`.
+The site serves at most 10 pages. `--in-stock` filters on the CLI side and needs a store.
+
+## Products and stock
+
+```
+obramat product show 25064668 --store 4          # price, stock, delivery, characteristics, EAN
+obramat store stock 25064668 --store 4            # one store, exact
+obramat store stock 25064668 --lat 41.39 --lng 2.17   # six nearest stores
+obramat store stock 25064668 --all                # every store (about 15 requests)
+```
+
+## Watches
+
+```
+obramat watch add product 25064668 --store 4 --name osb
+obramat watch add search "tablero osb" --store 4 --name osb-search --notify phone
+obramat watch check --format jsonl
+obramat watch events --since 24h
+```
+
+Events: `product.new`, `product.price_changed`, `product.stock_changed` (product watches),
+`product.out_of_stock`, `product.back_in_stock`, `product.removed`. Each carries `watch`, `at`,
+`product` and, for changes, `change: {from, to}`.
+
+## Exit codes
+
+0 ok (also "no changes"), 1 generic, 2 usage, 4 not found, 5 blocked by the site's bot
+protection or rate limited (wait minutes, do not loop), 6 network or site down, 7 the site
+changed shape (stderr carries a prefilled issue link), 130 interrupted.
+
+Keep the request rate low: one command is one to a few requests; `--all` and `--pages` add more.

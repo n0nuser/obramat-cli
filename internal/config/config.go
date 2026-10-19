@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/adrg/xdg"
 	"github.com/pelletier/go-toml/v2"
 )
 
@@ -19,24 +20,20 @@ const appDir = "obramat-cli"
 // through the environment.
 type Paths struct {
 	ConfigFile string // $XDG_CONFIG_HOME/obramat-cli/config.toml, or OBRAMAT_CONFIG
-	StateFile  string // $XDG_DATA_HOME/obramat-cli/state.json: watches, seen products, events
+	StateDB    string // $XDG_DATA_HOME/obramat-cli/state.db: watches, seen products, events
 	CacheDir   string // $XDG_CACHE_HOME/obramat-cli: store list cache, update check
 	StateDir   string // $XDG_STATE_HOME/obramat-cli: scheduler logs
 }
 
 func DefaultPaths() Paths {
-	home, _ := os.UserHomeDir()
-	xdg := func(env, fallback string) string {
-		if v := os.Getenv(env); filepath.IsAbs(v) {
-			return filepath.Join(v, appDir)
-		}
-		return filepath.Join(home, fallback, appDir)
-	}
+	// adrg/xdg reads the environment once at init; reload so a variable set
+	// by a test or a service unit counts.
+	xdg.Reload()
 	p := Paths{
-		ConfigFile: filepath.Join(xdg("XDG_CONFIG_HOME", ".config"), "config.toml"),
-		StateFile:  filepath.Join(xdg("XDG_DATA_HOME", ".local/share"), "state.json"),
-		CacheDir:   xdg("XDG_CACHE_HOME", ".cache"),
-		StateDir:   xdg("XDG_STATE_HOME", ".local/state"),
+		ConfigFile: filepath.Join(xdg.ConfigHome, appDir, "config.toml"),
+		StateDB:    filepath.Join(xdg.DataHome, appDir, "state.db"),
+		CacheDir:   filepath.Join(xdg.CacheHome, appDir),
+		StateDir:   filepath.Join(xdg.StateHome, appDir),
 	}
 	if v := os.Getenv("OBRAMAT_CONFIG"); v != "" {
 		p.ConfigFile = v
@@ -91,7 +88,7 @@ func Save(path string, cfg Config) error {
 	if err != nil {
 		return err
 	}
-	return WriteAtomic(path, raw, 0o600)
+	return WriteAtomic(path, raw, 0o600) // sink URLs can carry tokens
 }
 
 // WriteAtomic writes through a temp file in the same directory and renames it

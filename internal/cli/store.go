@@ -240,11 +240,16 @@ sweeps every store, about one request per three stores.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			path, err := a.Client.ProductPath(ctx, args[0])
-			if err != nil {
-				return err
+			// A bare reference is enough for the stock drawer; only a URL,
+			// or the single-store mode, needs the product path.
+			ref, path := args[0], ""
+			if !api.IsRef(ref) {
+				p, err := a.Client.ProductPath(ctx, args[0])
+				if err != nil {
+					return err
+				}
+				ref, path = refFromPath(p, args[0]), p
 			}
-			ref := refFromPath(path, args[0])
 			hasPoint := cmd.Flags().Changed("lat") || cmd.Flags().Changed("lng")
 			switch {
 			case all:
@@ -273,6 +278,9 @@ sweeps every store, about one request per three stores.`,
 			}
 			if sref.ID == 0 {
 				return output.Usagef("say where: --store STORE, --lat/--lng, or --all (or set a default with `obramat config set store ID`)")
+			}
+			if path == "" {
+				path = ref
 			}
 			d, err := a.Client.Product(ctx, path, sref)
 			if err != nil {

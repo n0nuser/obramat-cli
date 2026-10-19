@@ -60,8 +60,8 @@ func New(version string) *Client {
 // zero value means none: the site then shows its national web price and no
 // stock quantities.
 type StoreRef struct {
-	ID   int
-	Name string
+	ID   int    `json:"id"`
+	Name string `json:"name,omitempty"`
 }
 
 // cookie is the customer_context value the site sets when a visitor picks a

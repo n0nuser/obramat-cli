@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/spf13/cobra"
@@ -16,6 +17,7 @@ import (
 	"github.com/n0nuser/obramat-cli/internal/api"
 	"github.com/n0nuser/obramat-cli/internal/config"
 	"github.com/n0nuser/obramat-cli/internal/output"
+	"github.com/n0nuser/obramat-cli/internal/state"
 )
 
 // App is the state one invocation shares across commands.
@@ -33,6 +35,8 @@ type App struct {
 	// Interactive is true only when stdin, stdout and stderr are terminals and
 	// --no-input is absent; prompts happen only then.
 	Interactive bool
+
+	state *state.DB
 
 	flagFormat      string
 	flagNoColor     bool
@@ -53,7 +57,9 @@ func Execute(version string, args []string, stdin io.Reader, stdout, stderr io.W
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	cmd, err := root.ExecuteContextC(ctx)
+	a.close()
 	if err == nil {
+		a.maybeUpdate(ctx, cmd)
 		return 0
 	}
 	if errors.Is(err, context.Canceled) || ctx.Err() != nil {
@@ -63,6 +69,9 @@ func Execute(version string, args []string, stdin io.Reader, stdout, stderr io.W
 	path := "obramat"
 	if cmd != nil {
 		path = cmd.CommandPath()
+	}
+	if isCobraUsage(err) {
+		err = output.Usagef("%s. See `%s --help`", err.Error(), path)
 	}
 	jsonErrors := a.flagErrorFormat == "json" || (a.flagErrorFormat == "text" && os.Getenv("OBRAMAT_ERROR_FORMAT") == "json")
 	return output.PrintError(stderr, err, jsonErrors, version, path)
@@ -100,17 +109,18 @@ Agent usage: obramat skills get obramat-usage`,
 		return output.Usagef("%s. See `%s --help`", err.Error(), cmd.CommandPath())
 	})
 	pf := root.PersistentFlags()
-	pf.StringVar(&a.flagFormat, "format", "json", "output format: json, jsonl, pretty")
+	pf.StringVar(&a.flagFormat, "format", "json", "output format: json, jsonl, pretty, toon")
 	pf.BoolVar(&a.flagNoColor, "no-color", false, "no colour in pretty output (also NO_COLOR)")
 	pf.StringVar(&a.flagErrorFormat, "error-format", "text", "error rendering on stderr: text or json")
 	pf.BoolVar(&a.flagNoInput, "no-input", false, "never prompt; fail when input is missing")
 	pf.BoolVar(&a.flagDebug, "debug", false, "log every http request to stderr")
-	_ = root.RegisterFlagCompletionFunc("format", cobra.FixedCompletions([]string{"json", "jsonl", "pretty"}, cobra.ShellCompDirectiveNoFileComp))
+	_ = root.RegisterFlagCompletionFunc("format", cobra.FixedCompletions([]string{"json", "jsonl", "pretty", "toon"}, cobra.ShellCompDirectiveNoFileComp))
 	_ = root.RegisterFlagCompletionFunc("error-format", cobra.FixedCompletions([]string{"text", "json"}, cobra.ShellCompDirectiveNoFileComp))
 
 	root.AddCommand(
 		a.searchCmd(), a.productCmd(), a.categoryCmd(), a.storeCmd(),
-		// TODO(wip): watch, sink, mcp, config, doctor, skills, update.
+		a.watchCmd(), a.sinkCmd(),
+		a.mcpCmd(), a.configCmd(), a.doctorCmd(), a.skillsCmd(), a.updateCmd(),
 	)
 	return root
 }
@@ -142,6 +152,25 @@ func (a *App) setup(cmd *cobra.Command) error {
 		a.Client.Debug = a.Stderr
 	}
 	return nil
+}
+
+// isCobraUsage recognises cobra's own argument errors, which arrive as
+// plain errors: unknown command, wrong number of arguments, bad ValidArgs.
+func isCobraUsage(err error) bool {
+	msg := err.Error()
+	for _, p := range []string{"unknown command", "accepts ", "requires at least", "requires at most", "invalid argument", "required flag"} {
+		if strings.HasPrefix(msg, p) {
+			return true
+		}
+	}
+	return false
+}
+
+func (a *App) close() {
+	if a.state != nil {
+		a.state.Close()
+		a.state = nil
+	}
 }
 
 func (a *App) notice(format string, args ...any) {
