@@ -15,6 +15,10 @@
 
 [documentation](https://n0nuser.github.io/obramat-cli/) | [command reference](https://n0nuser.github.io/obramat-cli/docs/reference/) | [github](https://github.com/n0nuser/obramat-cli)
 
+<p align="center">
+  <img src="images/demos/search.gif" width="820" alt="obramat search demo">
+</p>
+
 ```console
 $ obramat store stock 25064668 --lat 40.42 --lng -3.70 --format pretty
 ID  STORE                STOCK  DISTANCE  SITE SAYS
