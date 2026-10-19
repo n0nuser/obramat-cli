@@ -13,7 +13,7 @@
 
 `obramat` is an unofficial terminal cli for obramat.es. it searches the catalogue with the same filters the site has, shows what a product costs at each warehouse and how many units each one holds, and watches products and searches for price and stock changes. it is read-only: no account, no cart, no orders. the site is behind bot protection, so it can replay your own browser session (cookies and user agent) over a chrome-like tls handshake. it compiles to one static Go binary. output is json by default so everything pipes into `jq`; `--format pretty` is for humans.
 
-[documentation](https://DOCS_DOMAIN/docs) | [command reference](https://DOCS_DOMAIN/docs/reference) | [github](https://github.com/n0nuser/obramat-cli)
+[documentation](https://n0nuser.github.io/obramat-cli/) | [command reference](https://n0nuser.github.io/obramat-cli/docs/reference/) | [github](https://github.com/n0nuser/obramat-cli)
 
 ```console
 $ obramat store stock 25064668 --lat 40.42 --lng -3.70 --format pretty
@@ -36,15 +36,26 @@ obramat mcp install claude-code
 
 # or read the embedded usage notes into the context
 obramat skills get obramat-usage
+
+# confirm the wiring with one live search
+obramat search "cemento" --format pretty
 ```
 
-the mcp server exposes `search`, `product_show`, `store_stock`, `store_list`, `store_near`, `category_list` and `watch_check`; each tool returns exactly what the matching command prints, json by default.
+the mcp server exposes `search`, `product_show`, `store_stock`, `store_list`, `store_near`, `category_list` and `watch_check`; each tool returns exactly what the matching command prints, json by default. `examples/` has more recipes.
 
-## why
+## install
 
-buying materials for a job means knowing which warehouse has forty boards of the right thickness before you drive there, and what they cost at that warehouse, because prices differ between stores. the site answers that one product and one store at a time, behind a store-picker drawer. this cli answers it for a product across every store at once, for a whole search at your store, and keeps answering on a timer so you hear when the boards are back. json output means scripts, agents and shell pipelines all read the same thing.
+### one line
 
-## quickstart
+```sh
+curl -fsSL https://raw.githubusercontent.com/n0nuser/obramat-cli/main/scripts/install.sh | sh
+```
+
+installs the latest release into `~/.local/bin` (`$PREFIX/bin` when `PREFIX` is set, or `$OBRAMAT_INSTALL_DIR`). the script picks the archive for your OS and architecture, verifies it against the release's `checksums.txt`, and only then installs it. pin a version with `VERSION`:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/n0nuser/obramat-cli/main/scripts/install.sh | VERSION=v1.2.3 sh
+```
 
 ### go install
 
@@ -53,16 +64,39 @@ go install github.com/n0nuser/obramat-cli/cmd/obramat@latest
 obramat --version
 ```
 
+### npx
+
+```bash
+npx obramat-cli --version
+npx obramat-cli search "tablero osb" --format pretty
+```
+
+the npm wrapper downloads the matching release binary during install. it is not published yet: publishing waits for an `NPM_TOKEN` secret, and the package version always matches the release tag.
+
 ### release binaries
 
-download the archive for your platform from [releases](https://github.com/n0nuser/obramat-cli/releases) (linux, macos and windows, amd64 and arm64), unpack it and put `obramat` on your `PATH`.
+download the archive for your platform from [releases](https://github.com/n0nuser/obramat-cli/releases) (linux, macos and windows, amd64 and arm64), unpack it and put `obramat` on your `PATH`. every release ships `checksums.txt` and a github provenance attestation; download both files first, then verify:
 
-every release ships `checksums.txt` with a github provenance attestation:
-
-```sh
-gh release download --repo n0nuser/obramat-cli --pattern checksums.txt
+```bash
+gh release download --repo n0nuser/obramat-cli --pattern 'obramat_*_linux_amd64.tar.gz' --pattern checksums.txt
+sha256sum --ignore-missing -c checksums.txt
 gh attestation verify checksums.txt --repo n0nuser/obramat-cli
 ```
+
+### from source
+
+```bash
+git clone https://github.com/n0nuser/obramat-cli && cd obramat-cli
+make build     # bin/obramat
+```
+
+homebrew, scoop and aur are planned; each needs somewhere to publish (a tap repo, a scoop bucket, an aur key), so they are not in the release config yet.
+
+## why
+
+buying materials for a job means knowing which warehouse has forty boards of the right thickness before you drive there, and what they cost at that warehouse, because prices differ between stores. the site answers that one product and one store at a time, behind a store-picker drawer. this cli answers it for a product across every store at once, for a whole search at your store, and keeps answering on a timer so you hear when the boards are back. json output means scripts, agents and shell pipelines all read the same thing.
+
+## quickstart
 
 ### check it works
 
@@ -187,11 +221,11 @@ command = ["~/bin/on-obramat-event"]   # event json on stdin
 
 `0` ok, `1` generic, `2` usage, `3` `auth status --check` with no browser session, `4` not found, `5` blocked by the site's bot protection or rate limited (the cli then stays away from the site for 10 minutes), `6` network or site down, `7` the site changed shape (stderr carries a prefilled issue link), `130` interrupted.
 
-## building from source
+## development
+
+after `make build` (see [install](#install)):
 
 ```bash
-git clone https://github.com/n0nuser/obramat-cli && cd obramat-cli
-make build     # bin/obramat
 make check     # vet, staticcheck, tests, gofmt
 ```
 
@@ -212,6 +246,7 @@ the docs site source is in `docs-site` (fumadocs, exported as static pages); its
 - [docs/cli-spec.md](docs/cli-spec.md): the interface contract
 - [docs/obramat-api-discovery.md](docs/obramat-api-discovery.md): how the site works, endpoint by endpoint
 - [docs/troubleshooting.md](docs/troubleshooting.md): the common failures, starting with `doctor`
+- [examples/](examples/): ready-to-run search, stock, watch and doctor recipes
 - [AGENTS.md](AGENTS.md): vocabulary and working rules
 - [docs/adr](docs/adr): decisions
 

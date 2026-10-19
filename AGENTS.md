@@ -13,6 +13,16 @@ catalogue, see a product's price and stock at each store, and get told when eith
 - Tests never call obramat.es. Live checks are manual, at a low rate.
 - Spec: `docs/cli-spec.md`. Site notes: `docs/obramat-api-discovery.md`. Decisions: `docs/adr/`.
 
+## Distribution
+
+- Releases are goreleaser archives named `obramat_<version>_<os>_<arch>.tar.gz` (`.zip` on Windows),
+  with `checksums.txt`. `scripts/install.sh` is the `curl | sh` installer; it downloads, verifies the
+  checksum, and only then installs.
+- `npm/` is the `npx` wrapper. It is **not published**: publishing waits for an `NPM_TOKEN` secret, and
+  the package version must equal the release tag so the postinstall can find the archive.
+- Homebrew, Scoop and AUR are planned but not configured. They need a tap repo, a scoop bucket and an
+  AUR key; do not add them to `.goreleaser.yaml` before those exist, or `release.yml` breaks.
+
 ## Language
 
 ### Access

@@ -1,0 +1,31 @@
+# example config.toml
+#
+# copy to ~/.config/obramat-cli/config.toml and edit. `obramat config set KEY VALUE`
+# writes the same file without losing comments you add by hand.
+#
+# unknown keys are an error: the CLI decodes this file strictly.
+
+# default store code for prices and stock (`obramat store list` shows them).
+# --store and OBRAMAT_STORE override it.
+store = 4
+
+[watch]
+# default interval for watches that do not pass --interval. floor 5m.
+interval = "30m"
+
+# where watch events go besides stdout. uncomment and adapt.
+
+# [sinks.phone]
+# type = "ntfy"
+# url = "https://ntfy.sh"
+# topic = "my-obramat-alerts"
+# token_file = "~/.config/obramat-cli/ntfy-token"   # optional
+
+# [sinks.chat]
+# type = "webhook"
+# url = "https://discord.com/api/webhooks/..."
+# template = "discord"        # or "slack"; omit to send the raw event json
+
+# [sinks.script]
+# type = "exec"
+# command = ["/home/me/bin/on-obramat-event"]   # event json on stdin
