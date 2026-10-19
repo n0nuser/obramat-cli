@@ -12,18 +12,23 @@ store selected is enough.
 
 ## Harvest it from Chrome
 
-The easiest way: let the CLI open a real Chrome window and read the session out of it.
+The easiest way: let the CLI read the session out of the Chrome profile you already use.
 
 ```bash
 obramat auth harvest
 ```
 
-The window opens headed so you can clear any check by hand. The CLI waits (up to `--timeout`, 5
-minutes by default) until the challenge is gone, then reads the cookies and the browser's own user
-agent. A persistent profile under `~/.local/share/obramat-cli/chrome` keeps the session across runs.
-If Chrome is already running with a DevTools port, `--browser-url` (or `OBRAMAT_CHROME_URL`, or the
-default `http://localhost:9222`) attaches to it instead of launching. `--chrome`/`OBRAMAT_CHROME` name
-the browser binary.
+The trusted `datadome` cookie lives in your everyday profile, not in a fresh one, so the CLI copies
+just that profile's cookie store and key reference (`Local State`, `Default/Cookies`, `Preferences`)
+into a temp profile — 0700, deleted when the command ends — and opens Chrome headed on it. Chrome 136+
+ignores `--remote-debugging-port` on the default profile, which is why this is a copy rather than an
+attach. The CLI waits (up to `--timeout`, 5 minutes by default) until the challenge is gone, then reads
+the cookies and the browser's own user agent.
+
+`--profile` / `OBRAMAT_CHROME_PROFILE` names the profile (default: the usual Chrome and Chromium
+locations, first one with cookies). `--chrome` / `OBRAMAT_CHROME` names the binary. `--browser-url` (or
+`OBRAMAT_CHROME_URL`, or the default `http://localhost:9222`) attaches to a Chrome you started with a
+DevTools port. If no real profile is found, a fresh window opens instead and may need a captcha.
 
 ## Or import an export
 

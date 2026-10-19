@@ -19,8 +19,11 @@ The last three steps are done and now confirmed live:
 2. **`--in-stock` uses the site's filter.** The live request sent
    `filters={"availability":"inStockInStore"}` and the site returned the store's in-stock products, 200
    rather than the challenge page. The page was captured as a fixture.
-3. **`auth harvest` reads the session out of a real Chrome**, so the manual export is no longer needed
-   for most users. Manual `auth login --cookies` stays for scripts, CI and machines without a display.
+3. **`auth harvest` reads the session out of the user's real Chrome**, so the manual export is no
+   longer needed for most users. It copies the trusted cookie store out of the everyday profile into a
+   temp profile (Chrome 136+ ignores `--remote-debugging-port` on the default profile, so it cannot be
+   an attach), starts Chrome on the copy, reads the session, and deletes the copy. Manual
+   `auth login --cookies` stays for scripts, CI and machines without a display.
 
 ## Commands and files
 
@@ -41,29 +44,36 @@ downloaded: the harvest drives the system Chrome/Chromium. The updater still use
 
 ## Tests
 
-82 test functions. New since the start of this work: the export parsers over four synthetic
+93 test functions. New since the start of this work: the export parsers over four synthetic
 cookie/HAR fixtures, cookie host/path/expiry matching, that the `datadome` cookie and session user agent
 both go out and a rotated cookie is absorbed, that `--store` beats a session `customer_context`, the
 Chrome handshake negotiating HTTP/1.1 while still verifying certificates, 0600 storage and the
 env-never-saved rule, the CLI-level `auth` flow, the live `--in-stock` page (`api.TestInStockListing`)
 beside the encoding (`api.TestInStockFilterParam`), and for the harvest: the cookie-to-export mapping
-through `api.ParseExport`, the browser lookup and override, the DevTools reachability probe, and the
-`auth harvest` command surface. No committed test launches a browser or talks to obramat.es.
+through `api.ParseExport`, the browser lookup and override, the DevTools reachability probe, profile
+auto-detection order, the copy plan (only the cookie store plus key reference, 0700/0600) and its
+exactness, free-port selection, the CDP URL normalisation, and that cleanup removes the temp dir and
+stops the process. No committed test launches a browser or talks to obramat.es.
 
 ## Open caveats
 
 1. **`auth harvest` needs a display** for a launched browser (it is headed on purpose, so a human can
    clear the challenge). On a headless machine, attach to a running Chrome with `--browser-url`, or use
    `auth login --cookies` / `OBRAMAT_COOKIEJAR`.
-2. **Sessions expire.** The replayed session is the user's own; when DataDome stops trusting it, run
+2. **The harvest copies the real profile's cookie store** into `harvest-*` under the data dir and deletes
+   it on exit, including error paths. It needs the user's keyring/Keychain to decrypt the copy (the
+   copied `Local State` carries the reference); if the browser cannot start on the copy, the command
+   fails with that guidance. Chrome 136+ only opens a devtools port for a non-default profile, which is
+   why it copies instead of attaching.
+3. **Sessions expire.** The replayed session is the user's own; when DataDome stops trusting it, run
    `auth harvest` again or re-import. Every site command exits 5 until then. The 10-minute local pause
    after a block still applies, and `auth status --check` tells a working session from a challenged one.
-3. **robots.txt** disallows `/search?q=*`, the filter and sort parameters, `/lazy/` and `/rest/`. The
+4. **robots.txt** disallows `/search?q=*`, the filter and sort parameters, `/lazy/` and `/rest/`. The
    CLI fetches what one browser page view fetches, on a person's request; this is worth knowing before
    anything bulk is built on it.
-4. **No store, no stock.** Without a store in context the site shows a default web price that for some
+5. **No store, no stock.** Without a store in context the site shows a default web price that for some
    products is a Canary Islands (IGIC) price, and no stock numbers.
-5. The `L`-severity notes in `docs/review-2026-10-19.md` stand (brand case, category accents,
+6. The `L`-severity notes in `docs/review-2026-10-19.md` stand (brand case, category accents,
    quantity-price tiers).
 
 R15 (the live `--in-stock` round trip) is closed; the details are in `docs/review-2026-10-19.md`.
@@ -95,22 +105,35 @@ REF       PRICE    UNIT    STOCK  PRODUCT                                     UR
 ### `obramat auth harvest --help`
 
 ```
-Open obramat.es in a real Chrome and read the session it earns, instead of
+Read the obramat.es session straight out of your real Chrome, instead of
 exporting cookies by hand.
 
-The browser opens headed so you can clear any DataDome check it shows; the
-window stays open while the command waits. If a Chrome debug endpoint is
-already running (--browser-url, OBRAMAT_CHROME_URL, or the default
-http://localhost:9222), the command attaches to it instead of launching.
+The trusted datadome cookie lives in your everyday profile, not in a fresh one,
+so the command copies just that profile's cookie store and keyfile into a temp
+profile (0700, deleted afterwards) and opens Chrome on it. Chrome 136 and up
+ignores --remote-debugging-port on the default profile, which is why it is a
+copy and not an attach. The window is headed so you can clear any check it
+shows; the command waits up to --timeout for that.
 
-A launched browser keeps its profile under the data directory, so the session
-survives across runs. The harvested cookies and the browser's own user agent
-are stored 0600 exactly as `auth login` stores an export.
+The profile is --profile / OBRAMAT_CHROME_PROFILE when set, else the first of
+the usual Chrome and Chromium locations that has cookies. Without one, or with
+--browser-url, the behaviour changes:
+
+  --browser-url URL   attach to a Chrome already listening on a devtools port
+                      (env OBRAMAT_CHROME_URL, or the default
+                      http://localhost:9222). Chrome 136+ only exposes that on
+                      a profile started with it.
+  no real profile     open a fresh window instead; it has no trusted cookie, so
+                      a captcha may need clearing by hand.
+
+The harvested cookies and the browser's own user agent are stored 0600 exactly
+as `auth login` stores an export.
 
 Examples:
   obramat auth harvest
-  obramat auth harvest --chrome /usr/bin/chromium --timeout 2m
-  obramat auth harvest --browser-url http://localhost:9222
+  obramat auth harvest --profile ~/.config/google-chrome --timeout 2m
+  obramat auth harvest --chrome /usr/bin/chromium
+  obramat auth harvest --browser-url http://127.0.0.1:9222
 
 Usage:
   obramat auth harvest [flags]
@@ -119,6 +142,7 @@ Flags:
       --browser-url string   attach to this Chrome DevTools endpoint instead of launching (env OBRAMAT_CHROME_URL; default: probe http://localhost:9222)
       --chrome string        Chrome or Chromium binary (env OBRAMAT_CHROME)
   -h, --help                 help for harvest
+      --profile string       real Chrome profile to copy the cookies from (env OBRAMAT_CHROME_PROFILE; default: the usual Chrome/Chromium locations)
       --timeout duration     how long to wait for the challenge to clear (default 5m0s)
       --user-agent string    override the user agent (default: the browser's own)
 ```

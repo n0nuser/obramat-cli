@@ -181,13 +181,19 @@ are involved.
   browser's user agent and `Sec-CH-UA*` hints. The session is stored 0600 at
   `$XDG_CONFIG_HOME/obramat-cli/session.json`; `login` then asks the storefront whether it works unless
   `--no-check`.
-- `auth harvest [--browser-url URL] [--chrome PATH] [--user-agent UA] [--timeout D]`: read the session
-  straight out of a real Chrome, so no export is needed. The browser opens headed (clear any DataDome
-  check by hand) with a persistent profile under `$XDG_DATA_HOME/obramat-cli/chrome`, and the command
+- `auth harvest [--profile DIR] [--browser-url URL] [--chrome PATH] [--user-agent UA] [--timeout D]`:
+  read the session straight out of the user's real Chrome, so no export is needed. The trusted
+  `datadome` cookie lives in the everyday profile, so the command copies only that profile's cookie
+  store and key reference (`Local State`, `Default/Cookies` and/or `Default/Network/Cookies` with their
+  journal files, `Default/Preferences`) into a temp profile (0700, under the data dir, removed on exit)
+  and opens Chrome headed on it. Chrome 136+ ignores `--remote-debugging-port` on the default profile,
+  which is why it is a copy launched with an explicit loopback port rather than an attach. It
   polls up to `--timeout` (default 5m) until the challenge is clear, then reads the cookies and
-  `navigator.userAgent` over CDP. If a DevTools endpoint is already up (`--browser-url`,
-  `OBRAMAT_CHROME_URL`, or the default `http://localhost:9222`), it attaches instead of launching.
-  `--chrome`/`OBRAMAT_CHROME` name the binary. It stores the result exactly as `login` does.
+  `navigator.userAgent` over CDP and stores them like `login`. `--profile`/`OBRAMAT_CHROME_PROFILE`
+  names the profile (default: the usual Chrome/Chromium locations, first with a cookie store);
+  `--chrome`/`OBRAMAT_CHROME` names the binary. With no real profile it opens a fresh window, which may
+  need a captcha; with `--browser-url`/`OBRAMAT_CHROME_URL` (or a Chrome already on
+  `http://localhost:9222`) it attaches instead.
 - `auth status [--check]`: where the session comes from and what it carries (cookie names only, never
   values). `--check` makes one request.
 - `auth logout`: forget the stored session. The browser is not touched.
@@ -282,14 +288,15 @@ back-to-back `--all` sweeps at 400 ms got a 403 that was still in place 45 s lat
 |---|---|---|
 | config | `$XDG_CONFIG_HOME/obramat-cli/config.toml` (or `OBRAMAT_CONFIG`) | 0600 |
 | browser session | `$XDG_CONFIG_HOME/obramat-cli/session.json` (or `OBRAMAT_COOKIEJAR=FILE` at runtime) | 0600 |
-| harvest Chrome profile | `$XDG_DATA_HOME/obramat-cli/chrome` | |
+| harvest temp profiles | `$XDG_DATA_HOME/obramat-cli/harvest-*/` created and removed per run | 0700 |
+| harvest fallback profile | `$XDG_DATA_HOME/obramat-cli/chrome` (only when no real profile is found) | |
 | watch state | `$XDG_DATA_HOME/obramat-cli/state.db` | 0600 |
 | store list cache, update stamp | `$XDG_CACHE_HOME/obramat-cli/` | 0600 |
 | scheduler log | `$XDG_STATE_HOME/obramat-cli/obramat-watch.log` | |
 
 Writes are atomic (temp file and rename). Env: `OBRAMAT_STORE`, `OBRAMAT_CONFIG`, `OBRAMAT_COOKIEJAR`,
-`OBRAMAT_ERROR_FORMAT`, `OBRAMAT_NO_UPDATE_CHECK`, `OBRAMAT_BASE_URL`, `NO_COLOR`. Precedence: flag >
-env > config.
+`OBRAMAT_CHROME`, `OBRAMAT_CHROME_PROFILE`, `OBRAMAT_CHROME_URL`, `OBRAMAT_ERROR_FORMAT`,
+`OBRAMAT_NO_UPDATE_CHECK`, `OBRAMAT_BASE_URL`, `NO_COLOR`. Precedence: flag > env > config.
 
 ## 11. Stack
 

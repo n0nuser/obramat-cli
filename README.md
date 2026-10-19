@@ -60,13 +60,13 @@ obramat doctor --format pretty
 
 ### get through bot protection
 
-obramat.es sits behind DataDome, which answers scripts with a challenge page. `obramat` gets through by replaying your own browser's session. the easy way is to let the cli drive a real Chrome window:
+obramat.es sits behind DataDome, which answers scripts with a challenge page. `obramat` gets through by replaying your own browser's session. the easy way is to let the cli read it out of the Chrome you already use:
 
 ```bash
-obramat auth harvest            # opens obramat.es, clear any captcha by hand
+obramat auth harvest            # copies the cookie store, opens Chrome, harvests
 ```
 
-the window opens headed so you can solve the check; the cli waits (up to `--timeout`, 5 minutes by default) and reads the session out over the devtools protocol. a persistent profile under `~/.local/share/obramat-cli/chrome` keeps the session across runs. if you already have Chrome running with a devtools port, `--browser-url` (or `OBRAMAT_CHROME_URL`, or the default `http://localhost:9222`) attaches to it instead of launching. `--chrome`/`OBRAMAT_CHROME` name the binary.
+the trusted datadome cookie lives in your everyday profile, so the cli copies just that profile's cookie store and key reference into a temp profile (0700, deleted when the command ends) and opens Chrome on it. it opens headed so you can clear any check it shows; the cli waits (up to `--timeout`, 5 minutes by default) and reads the session out over the devtools protocol. `--profile`/`OBRAMAT_CHROME_PROFILE` names the profile (default: the usual Chrome and Chromium locations, first one with cookies); `--chrome`/`OBRAMAT_CHROME` names the binary. this is a copy rather than an attach because Chrome 136+ ignores `--remote-debugging-port` on the default profile; `--browser-url` (or `OBRAMAT_CHROME_URL`, or a Chrome already on `http://localhost:9222`) attaches when you have one running with the port. with no real profile found, a fresh window opens instead and may need a captcha.
 
 or import an export by hand:
 

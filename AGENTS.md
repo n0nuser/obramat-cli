@@ -24,9 +24,10 @@ The user's own browser cookies (and user agent) that the CLI replays to get past
 _Avoid_: credentials, token, profile, cookie jar (except `OBRAMAT_COOKIEJAR`)
 
 **Harvest**:
-Reading the live session out of a real Chrome window over the DevTools protocol, instead of importing an
-export by hand.
-_Avoid_: scrape, capture (the fixture captures are a different thing)
+Reading the live session out of the user's real Chrome profile: copy its cookie store into a temp
+profile, start Chrome on the copy, then read cookies over the DevTools protocol. Not an export by hand,
+and not a scrape.
+_Avoid_: scrape, capture (the fixture captures are a different thing), export
 
 ### Catalogue
 

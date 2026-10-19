@@ -25,28 +25,42 @@ Read the session out of a real Chrome window
 obramat auth harvest [flags]
 ```
 
-Open obramat.es in a real Chrome and read the session it earns, instead of
+Read the obramat.es session straight out of your real Chrome, instead of
 exporting cookies by hand.
 
-The browser opens headed so you can clear any DataDome check it shows; the
-window stays open while the command waits. If a Chrome debug endpoint is
-already running (--browser-url, OBRAMAT_CHROME_URL, or the default
-http://localhost:9222), the command attaches to it instead of launching.
+The trusted datadome cookie lives in your everyday profile, not in a fresh one,
+so the command copies just that profile's cookie store and keyfile into a temp
+profile (0700, deleted afterwards) and opens Chrome on it. Chrome 136 and up
+ignores --remote-debugging-port on the default profile, which is why it is a
+copy and not an attach. The window is headed so you can clear any check it
+shows; the command waits up to --timeout for that.
 
-A launched browser keeps its profile under the data directory, so the session
-survives across runs. The harvested cookies and the browser's own user agent
-are stored 0600 exactly as `auth login` stores an export.
+The profile is --profile / OBRAMAT_CHROME_PROFILE when set, else the first of
+the usual Chrome and Chromium locations that has cookies. Without one, or with
+--browser-url, the behaviour changes:
+
+  --browser-url URL   attach to a Chrome already listening on a devtools port
+                      (env OBRAMAT_CHROME_URL, or the default
+                      http://localhost:9222). Chrome 136+ only exposes that on
+                      a profile started with it.
+  no real profile     open a fresh window instead; it has no trusted cookie, so
+                      a captcha may need clearing by hand.
+
+The harvested cookies and the browser's own user agent are stored 0600 exactly
+as `auth login` stores an export.
 
 ```bash
 obramat auth harvest
-obramat auth harvest --chrome /usr/bin/chromium --timeout 2m
-obramat auth harvest --browser-url http://localhost:9222
+obramat auth harvest --profile ~/.config/google-chrome --timeout 2m
+obramat auth harvest --chrome /usr/bin/chromium
+obramat auth harvest --browser-url http://127.0.0.1:9222
 ```
 
 | Flag | Type | Default | Description |
 | --- | --- | --- | --- |
 | `--browser-url` | string | - | attach to this Chrome DevTools endpoint instead of launching (env OBRAMAT_CHROME_URL; default: probe http://localhost:9222) |
 | `--chrome` | string | - | Chrome or Chromium binary (env OBRAMAT_CHROME) |
+| `--profile` | string | - | real Chrome profile to copy the cookies from (env OBRAMAT_CHROME_PROFILE; default: the usual Chrome/Chromium locations) |
 | `--timeout` | duration | `5m0s` | how long to wait for the challenge to clear |
 | `--user-agent` | string | - | override the user agent (default: the browser's own) |
 
